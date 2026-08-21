@@ -1,0 +1,63 @@
+[build-system]
+requires = ["setuptools>=61.2"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "nx-rustworkx"
+version = "0.1.0"
+description = "A NetworkX backend that dispatches selected algorithms to rustworkx."
+readme = "README.md"
+requires-python = ">=3.10"
+license = {text = "BSD-3-Clause"}
+keywords = ["networkx", "graphs", "algorithms", "rustworkx", "backend"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3 :: Only",
+    "Topic :: Scientific/Engineering",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+]
+dependencies = [
+    "networkx>=3.2",
+    "rustworkx>=0.15",
+]
+
+[[project.authors]]
+name = "Ville Vesilehto"
+email = "ville@vesilehto.fi"
+
+[project.urls]
+Homepage = "https://github.com/thevilledev/nx-rustworkx"
+"Bug Tracker" = "https://github.com/thevilledev/nx-rustworkx/issues"
+"Source Code" = "https://github.com/thevilledev/nx-rustworkx"
+
+[project.entry-points."networkx.backends"]
+rustworkx = "nx_rustworkx.interface:BackendInterface"
+
+[project.entry-points."networkx.backend_info"]
+rustworkx = "nx_rustworkx._info:get_info"
+
+[project.optional-dependencies]
+test = [
+    "pytest>=7.2",
+]
+bench = [
+    "pytest>=7.2",
+]
+
+[tool.setuptools.packages.find]
+include = ["nx_rustworkx*"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+filterwarnings = [
+    "ignore::DeprecationWarning",
+]
