@@ -18,7 +18,7 @@ From this repository:
 pip install -e .
 ```
 
-Requires Python 3.10+ , NetworkX 3.2+, and a published rustworkx wheel. v0 does not compile custom Rust.
+Requires Python 3.10+, NetworkX 3.4+, and a published rustworkx wheel. v0 does not compile custom Rust.
 
 ## Enable
 
