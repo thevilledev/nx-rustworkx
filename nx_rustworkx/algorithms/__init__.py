@@ -9,29 +9,38 @@ from nx_rustworkx.algorithms import (
     centrality,
     community,
     connectivity,
+    core,
+    cycles,
     dag,
     isomorphism,
     link_analysis,
     shortest_paths,
+    structure,
     traversal,
 )
 from nx_rustworkx.algorithms.centrality import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.community import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.connectivity import *  # noqa: F401,F403
+from nx_rustworkx.algorithms.core import *  # noqa: F401,F403
+from nx_rustworkx.algorithms.cycles import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.dag import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.isomorphism import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.link_analysis import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.shortest_paths import *  # noqa: F401,F403
+from nx_rustworkx.algorithms.structure import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.traversal import *  # noqa: F401,F403
 
 _MODULES = (
     centrality,
     community,
     connectivity,
+    core,
+    cycles,
     dag,
     isomorphism,
     link_analysis,
     shortest_paths,
+    structure,
     traversal,
 )
 
