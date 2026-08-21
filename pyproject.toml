@@ -48,6 +48,7 @@ rustworkx = "nx_rustworkx._info:get_info"
 [project.optional-dependencies]
 test = [
     "pytest>=7.2",
+    "scipy>=1.10",
 ]
 bench = [
     "pytest>=7.2",

@@ -73,15 +73,15 @@ Command:
 python benches/bench_centrality.py
 ```
 
-`betweenness_centrality` on `gnp_random_graph(n, p, seed=1)`:
+`betweenness_centrality` on `gnp_random_graph(n, p, seed=1)`, measured on a 4-core Linux VM:
 
 | n | m | convert (s) | kernel (s) | rustworkx total (s) | NetworkX (s) | speedup | convert share |
 |---|---|-------------|------------|---------------------|--------------|---------|---------------|
-| 200 | 1978 | _pending_ | _pending_ | _pending_ | _pending_ | _pending_ | _pending_ |
-| 2000 | 19954 | _pending_ | _pending_ | _pending_ | _pending_ | _pending_ | _pending_ |
-| 20000 | ~200k | _pending_ | _pending_ | _pending_ | — | — | _pending_ |
+| 200 | 2035 | 0.00031 | 0.0019 | 0.0048 | 0.067 | 14x | 6.5% |
+| 2000 | 20050 | 0.0043 | 0.19 | 0.30 | 8.4 | **28x** | 1.4% |
+| 20000 | 200473 | 0.098 | 50 | 52 | — | — | 0.19% |
 
-The 2k-node row is the public milestone graph (`n=2000`, `p=0.01`, `seed=1`). NetworkX on 20k nodes is omitted because Brandes is impractical there.
+The 2k-node row is the public milestone graph (`n=2000`, `p=0.01`, `seed=1`). Conversion stays well under 30% of runtime, so `should_run` correctly accepts these graphs. NetworkX on 20k nodes is omitted because Brandes is impractical there.
 
 ## Limits
 
