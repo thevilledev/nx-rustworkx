@@ -8,6 +8,7 @@ from collections import defaultdict
 import networkx as nx
 import rustworkx as rx
 
+from nx_rustworkx._compat import single_target_shortest_path_length_returns_dict
 from nx_rustworkx.algorithms._utils import (
     as_directed_rx,
     as_rw_graph,
@@ -514,10 +515,17 @@ single_target_shortest_path.can_run = _can_run_unweighted
 
 
 def single_target_shortest_path_length(G, target, cutoff=None):
-    """Unweighted shortest path lengths to ``target`` via rustworkx."""
+    """Unweighted shortest path lengths to ``target`` via rustworkx.
+
+    NetworkX 3.5 changed this from an iterator of pairs to a dict, so match
+    whichever shape the installed NetworkX returns.
+    """
     _ = cutoff
     lengths = _lengths_toward_target(as_rw_graph(G), target, None, "dijkstra")
-    return {node: int(length) for node, length in lengths.items()}
+    lengths = {node: int(length) for node, length in lengths.items()}
+    if single_target_shortest_path_length_returns_dict():
+        return lengths
+    return iter(lengths.items())
 
 
 single_target_shortest_path_length.can_run = _can_run_unweighted

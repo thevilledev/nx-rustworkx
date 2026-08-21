@@ -106,3 +106,23 @@ def test_can_run_accepts_networkx_defaults(name):
     G = nx.path_graph(4, create_using=nx.DiGraph)
     result = BackendInterface.can_run(name, (G, *args), {})
     assert result is True or isinstance(result, str)
+
+
+TRUTHY_FLAGS = [
+    ("betweenness_centrality", {"normalized": 1, "endpoints": 0}),
+    ("edge_betweenness_centrality", {"normalized": 1}),
+    ("closeness_centrality", {"wf_improved": 1}),
+    ("max_weight_matching", {"maxcardinality": 1}),
+    ("group_betweenness_centrality", {"normalized": 1}),
+]
+
+
+@pytest.mark.parametrize(("name", "flags"), TRUTHY_FLAGS)
+def test_non_bool_flags_are_accepted(name, flags):
+    """NetworkX takes any truthy value; rustworkx's kernels need a real bool."""
+    G = nx.gnp_random_graph(20, 0.3, seed=0)
+    for u, v in G.edges():
+        G[u][v]["weight"] = 1 + ((u + v) % 4)
+    extra = ([0, 1],) if name == "group_betweenness_centrality" else ()
+    result = getattr(nx, name)(G, *extra, backend="rustworkx", **flags)
+    assert result is not None

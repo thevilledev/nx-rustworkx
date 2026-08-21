@@ -72,8 +72,8 @@ def betweenness_centrality(
     rwg = as_rw_graph(G)
     scores = rx.betweenness_centrality(
         rwg.rx_graph,
-        normalized=normalized,
-        endpoints=endpoints,
+        normalized=bool(normalized),
+        endpoints=bool(endpoints),
         parallel_threshold=parallel_threshold,
     )
     return remap_scores(rwg, scores)
@@ -117,7 +117,7 @@ def edge_betweenness_centrality(
     rwg = as_rw_graph(G)
     scores = rx.edge_betweenness_centrality(
         rwg.rx_graph,
-        normalized=normalized,
+        normalized=bool(normalized),
         parallel_threshold=parallel_threshold,
     )
     edge_map = rwg.rx_graph.edge_index_map()
@@ -157,7 +157,7 @@ def closeness_centrality(
     rwg = as_rw_graph(G)
     scores = rx.closeness_centrality(
         rwg.rx_graph,
-        wf_improved=wf_improved,
+        wf_improved=bool(wf_improved),
         parallel_threshold=parallel_threshold,
     )
     remapped = remap_scores(rwg, scores)
@@ -438,7 +438,7 @@ def group_betweenness_centrality(
             rx.group_betweenness_centrality(
                 rwg.rx_graph,
                 require_nodes(rwg, group, kind="C node"),
-                normalized=normalized,
+                normalized=bool(normalized),
                 parallel_threshold=parallel_threshold,
             )
         )

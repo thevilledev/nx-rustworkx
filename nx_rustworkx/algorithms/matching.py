@@ -38,7 +38,7 @@ def max_weight_matching(G, maxcardinality=False, weight="weight"):
     weight_fn = edge_weight_fn(weight)
     pairs = rx.max_weight_matching(
         rwg.rx_graph,
-        max_cardinality=maxcardinality,
+        max_cardinality=bool(maxcardinality),
         weight_fn=lambda data: int(weight_fn(data)),
     )
     index_to_node = rwg.index_to_node

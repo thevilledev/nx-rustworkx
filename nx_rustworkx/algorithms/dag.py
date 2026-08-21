@@ -5,6 +5,7 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
+from nx_rustworkx._compat import immediate_dominators_includes_start
 from nx_rustworkx.algorithms._utils import (
     as_directed_rx,
     as_rw_graph,
@@ -223,8 +224,9 @@ def immediate_dominators(G, start):
         for node, dominator in rx.immediate_dominators(rwg.rx_graph, index).items()
         if node in reachable
     }
-    # NetworkX drops the start node's self-domination from the result.
-    result.pop(start, None)
+    if not immediate_dominators_includes_start():
+        # NetworkX 3.5 dropped the start node's self-domination.
+        result.pop(start, None)
     return result
 
 

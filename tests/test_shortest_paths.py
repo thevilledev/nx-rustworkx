@@ -97,8 +97,11 @@ def test_unweighted_single_source(G):
 def test_single_target_variants(G):
     target = 0
     got = nx.single_target_shortest_path_length(G, target, backend="rustworkx")
-    expected = dict(nx.single_target_shortest_path_length.orig_func(G, target))
-    _assert_length_maps(got, expected)
+    reference = nx.single_target_shortest_path_length.orig_func(G, target)
+    # NetworkX 3.5 changed this from an iterator of pairs to a dict; the backend
+    # has to return whichever shape the installed NetworkX returns.
+    assert isinstance(got, dict) == isinstance(reference, dict)
+    _assert_length_maps(dict(got), dict(reference))
     paths = nx.single_target_shortest_path(G, target, backend="rustworkx")
     e_paths = nx.single_target_shortest_path.orig_func(G, target)
     assert set(paths) == set(e_paths)
