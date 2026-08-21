@@ -3,7 +3,12 @@
 from __future__ import annotations
 
 from nx_rustworkx import algorithms
-from nx_rustworkx.algorithms._utils import default_can_run, default_should_run
+from nx_rustworkx.algorithms._utils import (
+    NO_AUTO_DISPATCH,
+    NO_AUTO_DISPATCH_REASON,
+    default_can_run,
+    default_should_run,
+)
 from nx_rustworkx.convert import convert_from_nx, convert_to_nx
 
 __all__ = ["BackendInterface"]
@@ -30,6 +35,8 @@ class BackendInterface:
         func = getattr(cls, name, None)
         if func is None:
             return False
+        if name in NO_AUTO_DISPATCH:
+            return NO_AUTO_DISPATCH_REASON
         checker = getattr(func, "should_run", None)
         if checker is not None:
             return checker(*args, **kwargs)

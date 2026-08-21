@@ -19,7 +19,10 @@ _FUNCTIONS = {
     "edge_betweenness_centrality": ["Unweighted only; ``k`` sampling falls back."],
     "closeness_centrality": ["Unweighted only; ``distance`` falls back."],
     "eigenvector_centrality": ["``nstart`` falls back to NetworkX."],
-    "degree_centrality": [],
+    "degree_centrality": [
+        "rustworkx divides by n - 1 where NetworkX multiplies by 1 / (n - 1), "
+        "so values can land one ULP apart."
+    ],
     "in_degree_centrality": ["Directed graphs only."],
     "out_degree_centrality": ["Directed graphs only."],
     "katz_centrality": [

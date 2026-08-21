@@ -12,6 +12,7 @@ from nx_rustworkx.algorithms._utils import (
     as_directed_rx,
     as_rw_graph,
     default_can_run,
+    default_should_run,
     edge_weight_fn,
     reject_callable_weight,
     reject_multigraph,
@@ -226,7 +227,29 @@ def shortest_path(G, source=None, target=None, weight=None, method="dijkstra"):
     return _iter()
 
 
+def _should_run_single_pair(G, source=None, target=None, **kwargs):
+    """NetworkX answers a single pair with a bidirectional search that stops as
+    soon as the two frontiers meet, which converting cannot beat."""
+    if source is not None and target is not None:
+        return "NetworkX's bidirectional search is faster for a single pair"
+    return default_should_run((G,), kwargs)
+
+
+def _should_run_shortest_path(
+    G, source=None, target=None, weight=None, method="dijkstra", **kwargs
+):
+    reason = _should_run_single_pair(G, source, target, **kwargs)
+    if reason is not True:
+        return reason
+    if weight is None:
+        # Unweighted paths come from a cheap BFS in NetworkX, so the win would
+        # have to come from remapping every path back, which it cannot.
+        return "NetworkX's BFS is faster than remapping unweighted paths"
+    return True
+
+
 shortest_path.can_run = _can_run_shortest
+shortest_path.should_run = _should_run_shortest_path
 
 
 def shortest_path_length(G, source=None, target=None, weight=None, method="dijkstra"):
@@ -270,6 +293,7 @@ def shortest_path_length(G, source=None, target=None, weight=None, method="dijks
 
 
 shortest_path_length.can_run = _can_run_shortest
+shortest_path_length.should_run = _should_run_single_pair
 
 
 def single_source_dijkstra(G, source, target=None, cutoff=None, weight="weight"):

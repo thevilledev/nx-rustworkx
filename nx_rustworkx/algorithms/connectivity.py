@@ -10,7 +10,6 @@ from nx_rustworkx.algorithms._utils import (
     can_run_directed,
     can_run_undirected,
     edge_weight_fn,
-    reject_multigraph,
     remap_components,
     remap_nodes,
     require_directed,
@@ -45,24 +44,6 @@ def _null_graph_guard(rwg):
         )
 
 
-def _can_run_undirected(G, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
-    if G.is_directed():
-        return "not implemented for directed type"
-    return True
-
-
-def _can_run_directed(G, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
-    if not G.is_directed():
-        return "not implemented for undirected type"
-    return True
-
-
 def is_connected(G):
     """Return True if the undirected graph is connected."""
     rwg = as_rw_graph(G)
@@ -77,7 +58,7 @@ def is_connected(G):
         ) from exc
 
 
-is_connected.can_run = _can_run_undirected
+is_connected.can_run = can_run_undirected
 
 
 def is_weakly_connected(G):
@@ -94,7 +75,7 @@ def is_weakly_connected(G):
         ) from exc
 
 
-is_weakly_connected.can_run = _can_run_directed
+is_weakly_connected.can_run = can_run_directed
 
 
 def connected_components(G):
@@ -105,7 +86,7 @@ def connected_components(G):
     return iter(remap_components(rwg, rx.connected_components(rwg.rx_graph)))
 
 
-connected_components.can_run = _can_run_undirected
+connected_components.can_run = can_run_undirected
 
 
 def weakly_connected_components(G):
@@ -116,7 +97,7 @@ def weakly_connected_components(G):
     return iter(remap_components(rwg, rx.weakly_connected_components(rwg.rx_graph)))
 
 
-weakly_connected_components.can_run = _can_run_directed
+weakly_connected_components.can_run = can_run_directed
 
 
 def number_connected_components(G):
@@ -127,7 +108,7 @@ def number_connected_components(G):
     return int(rx.number_connected_components(rwg.rx_graph))
 
 
-number_connected_components.can_run = _can_run_undirected
+number_connected_components.can_run = can_run_undirected
 
 
 def number_weakly_connected_components(G):

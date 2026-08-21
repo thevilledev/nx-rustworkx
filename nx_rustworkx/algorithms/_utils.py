@@ -214,3 +214,48 @@ def require_undirected(rwg) -> None:
 def require_directed(rwg) -> None:
     if not rwg.is_directed():
         raise nx.NetworkXNotImplemented("not implemented for undirected type")
+
+
+#: Functions the backend implements but should not be chosen for automatically.
+#:
+#: For each of these, ``benches/bench_parity.py`` measures rustworkx slower than
+#: NetworkX at both n=400 and n=2000, and the reason is structural rather than a
+#: constant factor: NetworkX stops early (``has_path``,
+#: ``bidirectional_shortest_path``, ``descendants_at_distance``,
+#: ``is_bipartite``), the result is quadratic in the graph so building it in
+#: Python dominates (``complement``, ``all_pairs_shortest_path``, the
+#: ``single_source_``/``single_target_`` path variants), or the kernel is so
+#: cheap that only the remap is left (the degree centralities,
+#: ``group_degree_centrality``).
+#:
+#: ``backend="rustworkx"`` still runs them, so nothing becomes unreachable. Only
+#: ``nx.config.backend_priority`` skips them.
+NO_AUTO_DISPATCH = frozenset(
+    {
+        "all_pairs_shortest_path",
+        "bidirectional_shortest_path",
+        "complement",
+        "cycle_basis",
+        "degree_centrality",
+        "descendants_at_distance",
+        "find_negative_cycle",
+        "group_degree_centrality",
+        "has_path",
+        "in_degree_centrality",
+        "is_bipartite",
+        "negative_edge_cycle",
+        "out_degree_centrality",
+        "single_source_dijkstra",
+        "single_source_shortest_path",
+        "single_source_shortest_path_length",
+        "single_target_shortest_path",
+        "single_target_shortest_path_length",
+        "is_weakly_connected",
+        "weakly_connected_components",
+    }
+)
+
+NO_AUTO_DISPATCH_REASON = (
+    "NetworkX is measured faster than converting for this function; "
+    'pass backend="rustworkx" to run it anyway'
+)

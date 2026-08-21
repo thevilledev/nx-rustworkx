@@ -53,6 +53,25 @@ nx.config.backends.rustworkx.min_nodes = 200
 nx.config.backends.rustworkx.min_edges = 400
 ```
 
+`should_run` also declines a function outright when `benches/bench_parity.py`
+measures NetworkX faster than converting for it. Twenty of the ninety-three are
+in that group, and `shortest_path` / `shortest_path_length` decline the argument
+shapes NetworkX answers faster (a single source-target pair, and unweighted
+paths). The reasons are structural, not constant factors:
+
+- NetworkX stops early: `has_path`, `bidirectional_shortest_path`,
+  `descendants_at_distance`, `is_bipartite`
+- the result is quadratic in the graph, so building it in Python dominates:
+  `complement`, `all_pairs_shortest_path`, the `single_source_*` and
+  `single_target_*` path variants
+- the kernel is so cheap that only the remap is left: `degree_centrality`,
+  `in_degree_centrality`, `out_degree_centrality`, `group_degree_centrality`,
+  `cycle_basis`, `negative_edge_cycle`, `find_negative_cycle`,
+  `weakly_connected_components`, `is_weakly_connected`, `single_source_dijkstra`
+
+`backend="rustworkx"` still runs every one of them, so nothing becomes
+unreachable — only `backend_priority` skips them.
+
 ## Supported functions
 
 93 NetworkX entry points dispatch to rustworkx. Anything not listed runs on
@@ -84,15 +103,50 @@ honor.
 
 ## Benchmarks
 
-Same graphs, same seeds. Convert time is reported separately from the rustworkx kernel. If convert is more than ~30% of runtime, `should_run` should have said no.
+Two scripts, same graphs and seeds on every run.
 
-Command:
+`benches/bench_parity.py` walks a representative call for each of the 93
+supported functions and reports the speedup including conversion. It exits
+non-zero if a function that is materially slower than NetworkX would still be
+picked automatically, which is how the list above stays honest:
+
+```bash
+python benches/bench_parity.py --nodes 2000
+```
+
+On a 4-core Linux VM at `n=2000`, 73 of the 93 functions are faster and
+auto-dispatched. A sample:
+
+| Function | rustworkx (s) | NetworkX (s) | Speedup |
+|---|---|---|---|
+| `is_isomorphic` | 0.0228 | 13.42 | 589x |
+| `bridges` | 0.00058 | 0.134 | 232x |
+| `katz_centrality` | 0.0055 | 0.393 | 72x |
+| `group_betweenness_centrality` | 0.378 | 25.63 | 68x |
+| `transitivity` | 0.0024 | 0.149 | 63x |
+| `betweenness_centrality` | 0.313 | 16.98 | 54x |
+| `floyd_warshall` | 0.354 | 13.30 | 38x |
+| `max_weight_matching` | 0.167 | 4.09 | 25x |
+| `all_pairs_dijkstra_path_length` | 0.076 | 1.76 | 23x |
+| `edge_betweenness_centrality` | 1.270 | 24.63 | 19x |
+| `eigenvector_centrality` | 0.0042 | 0.068 | 16x |
+| `transitive_reduction` | 0.212 | 1.63 | 7.7x |
+| `closeness_centrality` | 0.304 | 1.98 | 6.5x |
+| `minimum_spanning_tree` | 0.0149 | 0.066 | 4.4x |
+| `core_number` | 0.0076 | 0.0118 | 1.6x |
+
+The remaining twenty are the ones `should_run` declines, so `backend_priority`
+never makes a call slower.
+
+`benches/bench_centrality.py` reports convert time separately from the
+rustworkx kernel for betweenness. If convert is more than ~30% of runtime,
+`should_run` should have said no.
 
 ```bash
 python benches/bench_centrality.py
 ```
 
-`betweenness_centrality` on `gnp_random_graph(n, p, seed=1)`, measured on a 4-core Linux VM:
+`betweenness_centrality` on `gnp_random_graph(n, p, seed=1)`:
 
 | n | m | convert (s) | kernel (s) | rustworkx total (s) | NetworkX (s) | speedup | convert share |
 |---|---|-------------|------------|---------------------|--------------|---------|---------------|
@@ -100,7 +154,9 @@ python benches/bench_centrality.py
 | 2000 | 20050 | 0.0043 | 0.19 | 0.30 | 8.4 | **28x** | 1.4% |
 | 20000 | 200473 | 0.098 | 50 | 52 | — | — | 0.19% |
 
-The 2k-node row is the public milestone graph (`n=2000`, `p=0.01`, `seed=1`). Conversion stays well under 30% of runtime, so `should_run` correctly accepts these graphs. NetworkX on 20k nodes is omitted because Brandes is impractical there.
+The 2k-node row is the public milestone graph (`n=2000`, `p=0.01`, `seed=1`).
+Conversion stays well under 30% of runtime. NetworkX on 20k nodes is omitted
+because Brandes is impractical there.
 
 ## Limits
 
