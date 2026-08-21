@@ -70,3 +70,22 @@ def test_interface_exposes_phase1_algorithms():
         "is_isomorphic",
     ):
         assert hasattr(BackendInterface, name)
+
+
+def test_info_documents_every_implemented_function():
+    from nx_rustworkx._info import get_info
+    from nx_rustworkx.algorithms import ALGORITHMS
+
+    documented = set(get_info()["functions"])
+    assert documented == set(ALGORITHMS)
+
+
+def test_info_functions_are_dispatchable_in_networkx():
+    from nx_rustworkx.algorithms import ALGORITHMS
+
+    missing = [
+        name
+        for name in ALGORITHMS
+        if name not in nx.utils.backends._registered_algorithms
+    ]
+    assert missing == []

@@ -13,7 +13,6 @@ from nx_rustworkx.algorithms._utils import (
     reject_multigraph,
     remap_nodes,
     require_directed,
-    require_node,
 )
 __all__ = [
     "is_directed_acyclic_graph",

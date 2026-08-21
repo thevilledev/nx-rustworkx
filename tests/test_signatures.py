@@ -17,17 +17,23 @@ from nx_rustworkx.interface import BackendInterface
 POSITIONAL = (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR_KEYWORD)
 
 
+# NetworkX exposes a few of these only under a submodule, and stoer_wagner's
+# public name is the decorated wrapper rather than the dispatchable.
+_LOOKUP_MODULES = (
+    nx.algorithms.connectivity.stoerwagner,
+    nx.approximation,
+)
+
+
 def _networkx_function(name):
     func = getattr(nx, name, None)
-    if func is None:
-        for module in (
-            nx.algorithms.connectivity.stoerwagner,
-            nx.algorithms.centrality,
-        ):
-            func = getattr(module, name, None)
-            if func is not None:
-                break
-    return getattr(func, "orig_func", func)
+    if func is not None and hasattr(func, "orig_func"):
+        return func.orig_func
+    for module in _LOOKUP_MODULES:
+        candidate = getattr(module, name, None)
+        if candidate is not None and hasattr(candidate, "orig_func"):
+            return candidate.orig_func
+    return func
 
 
 def _positional_names(func):
@@ -75,6 +81,9 @@ REQUIRED_STANDINS = {
     "S": [0, 1],
     "sources": [0],
     "G2": nx.path_graph(4, create_using=nx.DiGraph),
+    "H": nx.path_graph(3, create_using=nx.DiGraph),
+    "matching": {(0, 1)},
+    "terminal_nodes": [0, 2],
 }
 
 
