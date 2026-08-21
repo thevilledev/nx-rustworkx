@@ -30,19 +30,29 @@ def pagerank(
     dangling=None,
 ):
     """PageRank via rustworkx. Undirected graphs are treated as bidirectional."""
+    import networkx as nx
     import rustworkx as rx
 
     rwg = as_rw_graph(G)
-    scores = rx.pagerank(
-        as_directed_rx(rwg),
-        alpha=alpha,
-        weight_fn=edge_weight_fn(weight),
-        nstart=_remap_optional_dict(rwg, nstart),
-        personalization=_remap_optional_dict(rwg, personalization),
-        tol=tol,
-        max_iter=max_iter,
-        dangling=_remap_optional_dict(rwg, dangling),
-    )
+    if rwg.number_of_nodes() == 0:
+        return {}
+    if personalization is not None and sum(personalization.values()) == 0:
+        raise ZeroDivisionError(
+            "The sum of the personalization values must not be zero."
+        )
+    try:
+        scores = rx.pagerank(
+            as_directed_rx(rwg),
+            alpha=alpha,
+            weight_fn=edge_weight_fn(weight),
+            nstart=_remap_optional_dict(rwg, nstart),
+            personalization=_remap_optional_dict(rwg, personalization),
+            tol=tol,
+            max_iter=max_iter,
+            dangling=_remap_optional_dict(rwg, dangling),
+        )
+    except rx.FailedToConverge as exc:
+        raise nx.PowerIterationFailedConvergence(max_iter) from exc
     return remap_scores(rwg, scores)
 
 

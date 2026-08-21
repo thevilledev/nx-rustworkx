@@ -37,27 +37,26 @@ class BackendInterface:
 
     @staticmethod
     def on_start_tests(items):
-        """Xfail NetworkX tests this backend cannot honor yet."""
+        """Xfail the NetworkX tests this backend cannot honor.
+
+        NetworkX already xfails anything ``can_run`` refuses, so this list only
+        needs the cases where the backend runs but answers differently.
+        """
         try:
             import pytest
         except ModuleNotFoundError:
             return
 
-        reasons = [
-            ("k=", "k-sampling is not implemented by rustworkx betweenness"),
-            ("sample", "k-sampling is not implemented by rustworkx betweenness"),
-            ("weighted", "weighted betweenness is not implemented"),
-            ("MultiGraph", "MultiGraph is not supported"),
-            ("multigraph", "MultiGraph is not supported"),
-            ("node_match", "node_match / edge_match are not supported"),
-            ("edge_match", "node_match / edge_match are not supported"),
-        ]
+        divergent = {
+            "test_topological_sort6": (
+                "the backend sorts a converted snapshot, so it cannot detect "
+                "mutation of the NetworkX graph during iteration"
+            ),
+        }
         for item in items:
-            label = f"{item.name} {item.fspath}"
-            for needle, reason in reasons:
-                if needle.lower() in label.lower():
-                    item.add_marker(pytest.mark.xfail(reason=reason, strict=False))
-                    break
+            reason = divergent.get(item.name)
+            if reason is not None:
+                item.add_marker(pytest.mark.xfail(reason=reason, strict=False))
 
 
 for _name in algorithms.ALGORITHMS:

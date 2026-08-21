@@ -196,12 +196,19 @@ def eigenvector_centrality(
     """Eigenvector centrality via rustworkx power iteration."""
     _ = nstart, kwargs
     rwg = as_rw_graph(G)
-    scores = rx.eigenvector_centrality(
-        rwg.rx_graph,
-        weight_fn=edge_weight_fn(weight),
-        max_iter=max_iter,
-        tol=tol,
-    )
+    if rwg.number_of_nodes() == 0:
+        raise nx.NetworkXPointlessConcept(
+            "cannot compute centrality for the null graph"
+        )
+    try:
+        scores = rx.eigenvector_centrality(
+            rwg.rx_graph,
+            weight_fn=edge_weight_fn(weight),
+            max_iter=max_iter,
+            tol=tol,
+        )
+    except rx.FailedToConverge as exc:
+        raise nx.PowerIterationFailedConvergence(max_iter) from exc
     return remap_scores(rwg, scores)
 
 
@@ -212,9 +219,19 @@ def _can_run_degree(G, *args, **kwargs):
     return reject_multigraph(G) or True
 
 
+def _trivial_degree_centrality(rwg):
+    """NetworkX reports 1 for every node when the graph has at most one node."""
+    if rwg.number_of_nodes() <= 1:
+        return {node: 1 for node in rwg.index_to_node}
+    return None
+
+
 def degree_centrality(G):
     """Degree centrality via rustworkx."""
     rwg = as_rw_graph(G)
+    trivial = _trivial_degree_centrality(rwg)
+    if trivial is not None:
+        return trivial
     return remap_scores(rwg, rx.degree_centrality(rwg.rx_graph))
 
 
@@ -225,6 +242,9 @@ def in_degree_centrality(G):
     """In-degree centrality via rustworkx. Directed graphs only."""
     rwg = as_rw_graph(G)
     require_directed(rwg)
+    trivial = _trivial_degree_centrality(rwg)
+    if trivial is not None:
+        return trivial
     return remap_scores(rwg, rx.in_degree_centrality(rwg.rx_graph))
 
 
@@ -235,6 +255,9 @@ def out_degree_centrality(G):
     """Out-degree centrality via rustworkx. Directed graphs only."""
     rwg = as_rw_graph(G)
     require_directed(rwg)
+    trivial = _trivial_degree_centrality(rwg)
+    if trivial is not None:
+        return trivial
     return remap_scores(rwg, rx.out_degree_centrality(rwg.rx_graph))
 
 
@@ -265,7 +288,10 @@ def _can_run_katz(
 def _katz_beta(rwg, beta):
     """Translate NetworkX ``beta`` into the rustworkx index-keyed form."""
     if not isinstance(beta, dict):
-        return float(beta)
+        try:
+            return float(beta)
+        except (TypeError, ValueError) as exc:
+            raise nx.NetworkXError("beta must be a number or a dictionary") from exc
     try:
         return {rwg.node_to_index[node]: float(value) for node, value in beta.items()}
     except KeyError as exc:
@@ -274,6 +300,8 @@ def _katz_beta(rwg, beta):
 
 def _katz(G, alpha, beta, max_iter, tol, weight):
     rwg = as_rw_graph(G)
+    if rwg.number_of_nodes() == 0:
+        return {}
     resolved = _katz_beta(rwg, beta)
     if isinstance(resolved, dict) and len(resolved) != rwg.number_of_nodes():
         raise nx.NetworkXError("beta dictionary must have a value for every node")
