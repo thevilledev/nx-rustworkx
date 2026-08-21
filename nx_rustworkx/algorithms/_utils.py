@@ -16,9 +16,15 @@ MIN_EDGES = 400
 
 
 def as_rw_graph(G) -> RustworkxGraph:
+    """Return a ``RustworkxGraph``, converting a NetworkX graph if needed.
+
+    The dispatcher normally hands us an already-converted graph. Direct calls
+    do not, so keep edge attributes here or weighted kernels would silently
+    read every edge as weight 1.
+    """
     if isinstance(G, RustworkxGraph):
         return G
-    return convert_from_nx(G)
+    return convert_from_nx(G, preserve_edge_attrs=True)
 
 
 def is_graph_like(obj: Any) -> bool:
@@ -164,3 +170,47 @@ def reversed_digraph(rx_graph):
     copied = rx_graph.copy()
     copied.reverse()
     return copied
+
+
+def require_nodes(rwg: RustworkxGraph, nodes, *, kind: str = "Node") -> list[int]:
+    """Map an iterable of NetworkX nodes to rustworkx indices."""
+    node_to_index = rwg.node_to_index
+    missing = [n for n in nodes if n not in node_to_index]
+    if missing:
+        raise nx.NodeNotFound(f"{kind}(s) {set(missing)} not in G")
+    return [node_to_index[n] for n in nodes]
+
+
+def remap_nodes(rwg: RustworkxGraph, indices) -> list:
+    index_to_node = rwg.index_to_node
+    return [index_to_node[i] for i in indices]
+
+
+def can_run_undirected(G, *args, **kwargs):
+    """can_run guard for kernels NetworkX only defines on undirected graphs."""
+    reason = reject_multigraph(G)
+    if reason:
+        return reason
+    if G.is_directed():
+        return "not implemented for directed type"
+    return True
+
+
+def can_run_directed(G, *args, **kwargs):
+    """can_run guard for kernels NetworkX only defines on directed graphs."""
+    reason = reject_multigraph(G)
+    if reason:
+        return reason
+    if not G.is_directed():
+        return "not implemented for undirected type"
+    return True
+
+
+def require_undirected(rwg) -> None:
+    if rwg.is_directed():
+        raise nx.NetworkXNotImplemented("not implemented for directed type")
+
+
+def require_directed(rwg) -> None:
+    if not rwg.is_directed():
+        raise nx.NetworkXNotImplemented("not implemented for undirected type")
