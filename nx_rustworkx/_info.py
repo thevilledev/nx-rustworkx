@@ -67,6 +67,7 @@ def get_info():
         "default_config": {
             "min_nodes": 200,
             "min_edges": 400,
+            "astar_heuristic_check": True,
         },
         "functions": functions,
     }
