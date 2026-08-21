@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from nx_rustworkx import algorithms
+from nx_rustworkx import algorithms, generators
 from nx_rustworkx.algorithms._utils import default_can_run, default_should_run
 from nx_rustworkx.convert import convert_from_nx, convert_to_nx
 
@@ -62,3 +62,6 @@ class BackendInterface:
 
 for _name in algorithms.ALGORITHMS:
     setattr(BackendInterface, _name, getattr(algorithms, _name))
+
+for _name in generators.GENERATORS:
+    setattr(BackendInterface, _name, getattr(generators, _name))

@@ -31,7 +31,7 @@ def convert_from_nx(
         return G
 
     directed = G.is_directed()
-    rx_graph = rx.PyDiGraph() if directed else rx.PyGraph()
+    rx_graph = rx.PyDiGraph(multigraph=False) if directed else rx.PyGraph(multigraph=False)
 
     nodes = list(G)
     rx_graph.add_nodes_from(nodes)
@@ -86,7 +86,7 @@ def rustworkx_graph_to_nx(rwg: RustworkxGraph):
     import networkx as nx
 
     out = nx.DiGraph() if rwg.is_directed() else nx.Graph()
-    out.add_nodes_from(rwg.index_to_node)
+    out.add_nodes_from(rwg.node_to_index)
     for u_idx, v_idx, data in rwg.rx_graph.weighted_edge_list():
         u = rwg.index_to_node[u_idx]
         v = rwg.index_to_node[v_idx]
