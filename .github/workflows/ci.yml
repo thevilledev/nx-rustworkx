@@ -19,6 +19,8 @@ jobs:
           python-version: ${{ matrix.python-version }}
       - name: Install package
         run: python -m pip install -e ".[test]"
+      - name: Show versions
+        run: python -c "import sys, networkx, rustworkx; print(sys.version); print('networkx', networkx.__version__); print('rustworkx', rustworkx.__version__)"
       - name: Package tests
         run: python -m pytest tests
       - name: NetworkX betweenness suite

@@ -6,7 +6,7 @@ Keep ``import networkx as nx`` as the primary UX. Enable this backend with
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
+__version__ = "0.2.0"
 
 __all__ = [
     "BackendInterface",

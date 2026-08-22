@@ -2,7 +2,7 @@
 
 A [NetworkX](https://networkx.org) 3.x backend that dispatches selected algorithms to [rustworkx](https://www.rustworkx.org).
 
-You keep `import networkx as nx`. This package converts `nx.Graph` to rustworkx, runs the kernel, and remaps results to the original node IDs. It does not reimplement `Graph`, drawing, or I/O. Unimplemented functions fall through to NetworkX.
+You keep `import networkx as nx`. This package converts `nx.Graph` to rustworkx, runs the kernel, and remaps results to the original node IDs. It does not reimplement drawing or I/O. Unimplemented functions fall through to NetworkX when the input is still an `nx.Graph`.
 
 This is not a drop-in NetworkX replacement and not a rustworkx fork. Install it, set the backend, and the functions below get faster.
 
@@ -46,6 +46,42 @@ nx.betweenness_centrality(G, backend="rustworkx")
 
 `should_run` skips conversion on small graphs (default **n < 200** or **m < 400**) so tiny examples stay on NetworkX. `backend="rustworkx"` always tries the kernel.
 
+## Skip conversion (Phase 3)
+
+`nx.empty_graph(..., backend="rustworkx")` and `nx.from_edgelist(..., backend="rustworkx")` work on NetworkX 3.2+. `nx.Graph(..., backend="rustworkx")` and `NETWORKX_BACKEND_PRIORITY_CLASSES` need NetworkX 3.6+ (Python 3.11+).
+
+Build the rustworkx graph once, then algorithms run without `convert_from_nx`:
+
+```python
+import networkx as nx
+
+G = nx.Graph([(0, 1), (1, 2), (2, 0)], backend="rustworkx")
+nx.betweenness_centrality(G)  # already a rustworkx graph
+
+# Or let generators return rustworkx graphs:
+# NETWORKX_BACKEND_PRIORITY_GENERATORS=rustworkx
+nx.config.backend_priority.generators = ["rustworkx"]
+H = nx.gnp_random_graph(500, 0.05, seed=0)
+nx.betweenness_centrality(H)
+```
+
+`H` is a `RustworkxGraph`, not an `nx.Graph`. It supports construction (`add_node`, `add_edge`, `add_edges_from`, `clear`) and the methods algorithms need. It is not a drop-in NetworkX graph (no drawing, no MultiGraph).
+
+If you then call an algorithm this backend does not implement, NetworkX raises unless fallback is on:
+
+```bash
+NETWORKX_BACKEND_PRIORITY_GENERATORS=rustworkx \
+NETWORKX_FALLBACK_TO_NX=true \
+python your_script.py
+```
+
+```python
+nx.config.fallback_to_nx = True
+nx.triangles(H)  # converts H to nx.Graph, then runs NetworkX
+```
+
+Without `NETWORKX_FALLBACK_TO_NX`, keep using `nx.Graph` plus `NETWORKX_BACKEND_PRIORITY=rustworkx` so unimplemented functions stay on NetworkX.
+
 Tune the cutoff after import:
 
 ```python
@@ -53,7 +89,7 @@ nx.config.backends.rustworkx.min_nodes = 200
 nx.config.backends.rustworkx.min_edges = 400
 ```
 
-## Supported in 0.1
+## Supported in 0.2
 
 | Area | Functions |
 |---|---|
@@ -62,6 +98,7 @@ nx.config.backends.rustworkx.min_edges = 400
 | Connectivity | `is_connected`, `is_weakly_connected`, `connected_components`, `weakly_connected_components`, `number_connected_components` |
 | Link analysis | `pagerank` |
 | Isomorphism | `is_isomorphic` (structural VF2) |
+| Construction | `nx.Graph` / `nx.DiGraph` (`backend="rustworkx"`), `empty_graph`, `from_edgelist` |
 
 ## Benchmarks
 
@@ -107,7 +144,8 @@ NETWORKX_TEST_BACKEND=rustworkx pytest --pyargs networkx.algorithms.centrality.t
 nx_rustworkx/
   interface.py          # BackendInterface
   convert.py            # nx <-> rustworkx + node map
-  graph.py              # wrapper with __networkx_backend__
+  graph.py              # rustworkx-backed graph object
+  generators.py         # Graph/DiGraph/empty_graph/from_edgelist
   algorithms/           # thin rustworkx wrappers
   _info.py              # get_info(); no rustworkx import
 ```

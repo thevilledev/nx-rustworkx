@@ -57,6 +57,18 @@ def get_info():
         "is_isomorphic": {
             "additional_docs": extra + " Structural VF2 only; ``node_match`` / ``edge_match`` are not supported.",
         },
+        "graph__new__": {
+            "additional_docs": "Returns a rustworkx-backed graph so later algorithm calls skip conversion.",
+        },
+        "digraph__new__": {
+            "additional_docs": "Returns a rustworkx-backed digraph so later algorithm calls skip conversion.",
+        },
+        "empty_graph": {
+            "additional_docs": "Constructs a rustworkx-backed empty graph. MultiGraph create_using is rejected.",
+        },
+        "from_edgelist": {
+            "additional_docs": "Constructs a rustworkx-backed graph from an edgelist.",
+        },
     }
     return {
         "backend_name": "rustworkx",
