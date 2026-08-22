@@ -62,9 +62,11 @@ def _calls(graphs, n):
             "articulation_points",
             "bridges",
             "biconnected_components",
+            "chain_decomposition",
             "cycle_basis",
             "core_number",
             "is_bipartite",
+            "is_planar",
             "isolates",
             "number_of_isolates",
             "transitivity",
@@ -130,16 +132,40 @@ def _calls(graphs, n):
         yield name, U, (src,), {}
     for name in ("single_target_shortest_path", "single_target_shortest_path_length"):
         yield name, U, (tgt,), {}
+    yield "single_source_all_shortest_paths", U, (src,), {}
+    yield "bfs_layers", U, ([src],), {}
     # Use a node in the middle of the DAG so both directions have work to do.
     middle = n // 2
     for name in ("ancestors", "descendants"):
         yield name, A, (middle,), {}
+    yield "dominance_frontiers", A, (src,), {}
     yield "node_connected_component", U, (src,), {}
     # Cycle and path enumeration is exponential, so keep those graphs sparse.
     sparse_directed = nx.gnp_random_graph(40, 0.05, seed=2, directed=True)
     sparse_undirected = nx.gnp_random_graph(24, 0.12, seed=2)
     yield "simple_cycles", sparse_directed, (), {}
     yield "all_simple_paths", sparse_undirected, (0, 23), {}
+    cyclic = D.copy()
+    cyclic.add_edge(tgt, src)  # guarantee at least one cycle
+    yield "find_cycle", cyclic, (), {}
+    matching = nx.max_weight_matching.orig_func(U)
+    yield "is_matching", U, (matching,), {}
+    yield "is_maximal_matching", U, (matching,), {}
+    # Line graphs and metric closures grow quadratically; keep the input small.
+    yield "line_graph", nx.gnp_random_graph(max(60, n // 8), 0.08, seed=3), (), {}
+    yield (
+        "metric_closure",
+        nx.connected_watts_strogatz_graph(min(n // 4, 200), 4, 0.3, seed=1),
+        (),
+        {},
+    )
+    yield "vf2pp_isomorphism", U, (U.copy(),), {}
+    yield (
+        "vf2pp_all_isomorphisms",
+        nx.gnp_random_graph(60, 0.1, seed=5),
+        (nx.gnp_random_graph(60, 0.1, seed=5),),
+        {},
+    )
     yield "all_shortest_paths", U, (src, tgt), {}
     yield "has_path", U, (src, tgt), {}
     yield "bidirectional_shortest_path", U, (src, tgt), {}

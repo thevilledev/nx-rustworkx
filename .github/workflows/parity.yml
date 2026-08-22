@@ -1,0 +1,34 @@
+name: Parity gate
+
+# bench_parity.py exits non-zero when a function that measures slower than
+# NetworkX would still be selected under automatic backend priority. Timing in
+# CI is noisy, so this runs on a schedule rather than per pull request; the
+# bench's 0.9x materiality threshold absorbs run-to-run jitter.
+
+on:
+  schedule:
+    - cron: "23 5 * * 1"
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  parity:
+    runs-on: avrea-ubuntu-latest
+    steps:
+      - uses: actions/checkout@3d3c42e5aac5ba805825da76410c181273ba90b1 # v7.0.1
+        with:
+          persist-credentials: false
+      - name: Install uv
+        uses: astral-sh/setup-uv@c771a70e6277c0a99b617c7a806ffedaca235ff9 # v9.0.0
+        with:
+          python-version: "3.12"
+          enable-cache: true
+          cache-dependency-glob: uv.lock
+      - name: Install project
+        run: uv sync --frozen --extra test
+      - name: Parity at n=800
+        run: uv run --frozen python benches/bench_parity.py --nodes 800
+      - name: Parity at n=2000
+        run: uv run --frozen python benches/bench_parity.py --nodes 2000
