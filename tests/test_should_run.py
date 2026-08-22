@@ -119,7 +119,7 @@ def test_backend_priority_skips_declined_functions():
 
 def test_shortest_path_declines_where_networkx_wins():
     G = nx.gnp_random_graph(400, 0.05, seed=0)
-    # A single pair goes to NetworkX's bidirectional search.
+    # An unweighted single pair goes to NetworkX's bidirectional search.
     assert (
         BackendInterface.should_run("shortest_path", (G,), {"source": 0, "target": 9}) is not True
     )
@@ -129,6 +129,19 @@ def test_shortest_path_declines_where_networkx_wins():
     )
     # Unweighted paths are cheaper to build in NetworkX than to remap.
     assert BackendInterface.should_run("shortest_path", (G,), {"source": 0}) is not True
+    # A weighted pair runs the kernel with early termination, which wins.
+    assert (
+        BackendInterface.should_run(
+            "shortest_path", (G,), {"source": 0, "target": 9, "weight": "weight"}
+        )
+        is True
+    )
+    assert (
+        BackendInterface.should_run(
+            "shortest_path_length", (G,), {"source": 0, "target": 9, "weight": "weight"}
+        )
+        is True
+    )
     # Weighted paths and any lengths are worth converting for.
     assert (
         BackendInterface.should_run("shortest_path", (G,), {"source": 0, "weight": "weight"})
