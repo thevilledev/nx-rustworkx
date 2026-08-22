@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="The 93 NetworkX algorithms supported by nx-rustworkx, with compatibility notes.">
+    <meta name="description" content="The 105 NetworkX algorithms supported by nx-rustworkx, with compatibility notes.">
     <meta name="theme-color" content="#ffffff">
     <meta property="og:type" content="website">
     <meta property="og:title" content="nx-rustworkx algorithm reference">
@@ -31,7 +31,7 @@
       <h1>Algorithms</h1>
 
       <p>
-        The backend implements 93 NetworkX algorithms plus constructors for a
+        The backend implements 105 NetworkX algorithms plus constructors for a
         rustworkx-backed graph. Anything outside this list stays on NetworkX
         when the input is still an ordinary NetworkX graph.
       </p>
@@ -44,20 +44,20 @@
             <tr><th scope="row">Centrality</th><td><code>betweenness_centrality</code>, <code>closeness_centrality</code>, <code>degree_centrality</code>, <code>edge_betweenness_centrality</code>, <code>eigenvector_centrality</code>, <code>group_betweenness_centrality</code>, <code>group_closeness_centrality</code>, <code>group_degree_centrality</code>, <code>hits</code>, <code>in_degree_centrality</code>, <code>katz_centrality</code>, <code>katz_centrality_numpy</code>, <code>out_degree_centrality</code></td></tr>
             <tr><th scope="row">Link analysis</th><td><code>pagerank</code></td></tr>
             <tr><th scope="row">Shortest paths</th><td><code>shortest_path</code>, <code>shortest_path_length</code>, <code>dijkstra_path</code>, <code>dijkstra_path_length</code>, <code>bellman_ford_path</code>, <code>bellman_ford_path_length</code>, <code>bidirectional_shortest_path</code>, <code>has_path</code>, <code>all_shortest_paths</code></td></tr>
-            <tr><th scope="row">Single source</th><td><code>single_source_dijkstra</code>, <code>single_source_dijkstra_path</code>, <code>single_source_dijkstra_path_length</code>, <code>single_source_bellman_ford</code>, <code>single_source_bellman_ford_path</code>, <code>single_source_bellman_ford_path_length</code>, <code>single_source_shortest_path</code>, <code>single_source_shortest_path_length</code>, <code>single_target_shortest_path</code>, <code>single_target_shortest_path_length</code></td></tr>
+            <tr><th scope="row">Single source</th><td><code>single_source_dijkstra</code>, <code>single_source_dijkstra_path</code>, <code>single_source_dijkstra_path_length</code>, <code>single_source_bellman_ford</code>, <code>single_source_bellman_ford_path</code>, <code>single_source_bellman_ford_path_length</code>, <code>single_source_shortest_path</code>, <code>single_source_shortest_path_length</code>, <code>single_source_all_shortest_paths</code>, <code>single_target_shortest_path</code>, <code>single_target_shortest_path_length</code></td></tr>
             <tr><th scope="row">All pairs</th><td><code>all_pairs_dijkstra</code>, <code>all_pairs_dijkstra_path</code>, <code>all_pairs_dijkstra_path_length</code>, <code>all_pairs_bellman_ford_path</code>, <code>all_pairs_bellman_ford_path_length</code>, <code>all_pairs_shortest_path</code>, <code>all_pairs_shortest_path_length</code>, <code>floyd_warshall</code>, <code>floyd_warshall_numpy</code>, <code>floyd_warshall_predecessor_and_distance</code>, <code>average_shortest_path_length</code></td></tr>
             <tr><th scope="row">Heuristic search</th><td><code>astar_path</code>, <code>astar_path_length</code></td></tr>
             <tr><th scope="row">Negative cycles</th><td><code>negative_edge_cycle</code>, <code>find_negative_cycle</code></td></tr>
-            <tr><th scope="row">DAG</th><td><code>is_directed_acyclic_graph</code>, <code>topological_sort</code>, <code>topological_generations</code>, <code>ancestors</code>, <code>descendants</code>, <code>descendants_at_distance</code>, <code>dag_longest_path</code>, <code>dag_longest_path_length</code>, <code>transitive_reduction</code>, <code>immediate_dominators</code></td></tr>
-            <tr><th scope="row">Traversal</th><td><code>dfs_edges</code></td></tr>
+            <tr><th scope="row">DAG</th><td><code>is_directed_acyclic_graph</code>, <code>topological_sort</code>, <code>topological_generations</code>, <code>ancestors</code>, <code>descendants</code>, <code>descendants_at_distance</code>, <code>dag_longest_path</code>, <code>dag_longest_path_length</code>, <code>transitive_reduction</code>, <code>immediate_dominators</code>, <code>dominance_frontiers</code></td></tr>
+            <tr><th scope="row">Traversal</th><td><code>dfs_edges</code>, <code>bfs_layers</code></td></tr>
             <tr><th scope="row">Connectivity</th><td><code>is_connected</code>, <code>is_weakly_connected</code>, <code>is_strongly_connected</code>, <code>is_semiconnected</code>, <code>connected_components</code>, <code>weakly_connected_components</code>, <code>strongly_connected_components</code>, <code>number_connected_components</code>, <code>number_weakly_connected_components</code>, <code>number_strongly_connected_components</code>, <code>node_connected_component</code>, <code>articulation_points</code>, <code>bridges</code>, <code>biconnected_components</code>, <code>condensation</code>, <code>stoer_wagner</code></td></tr>
-            <tr><th scope="row">Cycles and cores</th><td><code>simple_cycles</code>, <code>cycle_basis</code>, <code>core_number</code></td></tr>
-            <tr><th scope="row">Structure</th><td><code>is_bipartite</code>, <code>isolates</code>, <code>number_of_isolates</code>, <code>transitivity</code></td></tr>
-            <tr><th scope="row">Matching and coloring</th><td><code>max_weight_matching</code>, <code>greedy_color</code></td></tr>
-            <tr><th scope="row">Trees</th><td><code>minimum_spanning_tree</code>, <code>minimum_spanning_edges</code>, <code>steiner_tree</code></td></tr>
-            <tr><th scope="row">Operators</th><td><code>complement</code>, <code>cartesian_product</code>, <code>tensor_product</code></td></tr>
+            <tr><th scope="row">Cycles and cores</th><td><code>simple_cycles</code>, <code>cycle_basis</code>, <code>find_cycle</code>, <code>chain_decomposition</code>, <code>core_number</code></td></tr>
+            <tr><th scope="row">Structure</th><td><code>is_bipartite</code>, <code>is_planar</code>, <code>isolates</code>, <code>number_of_isolates</code>, <code>transitivity</code></td></tr>
+            <tr><th scope="row">Matching and coloring</th><td><code>max_weight_matching</code>, <code>is_matching</code>, <code>is_maximal_matching</code>, <code>greedy_color</code></td></tr>
+            <tr><th scope="row">Trees</th><td><code>minimum_spanning_tree</code>, <code>minimum_spanning_edges</code>, <code>steiner_tree</code>, <code>metric_closure</code></td></tr>
+            <tr><th scope="row">Operators</th><td><code>complement</code>, <code>cartesian_product</code>, <code>tensor_product</code>, <code>line_graph</code></td></tr>
             <tr><th scope="row">Simple paths</th><td><code>all_simple_paths</code></td></tr>
-            <tr><th scope="row">Isomorphism</th><td><code>is_isomorphic</code>, <code>vf2pp_is_isomorphic</code></td></tr>
+            <tr><th scope="row">Isomorphism</th><td><code>is_isomorphic</code>, <code>vf2pp_is_isomorphic</code>, <code>vf2pp_isomorphism</code>, <code>vf2pp_all_isomorphisms</code></td></tr>
             <tr><th scope="row">Construction</th><td><code>Graph</code>, <code>DiGraph</code>, <code>empty_graph</code>, <code>from_edgelist</code></td></tr>
           </tbody>
         </table>
@@ -67,19 +67,20 @@
 
       <p>
         Explicit <code>backend="rustworkx"</code> calls can reach every
-        implementation above. Automatic backend priority declines 20 functions
+        implementation above. Automatic backend priority declines 22 functions
         for which conversion or result remapping is usually slower than NetworkX:
       </p>
 
       <ul>
-        <li><strong>Early exit favors NetworkX:</strong> <code>has_path</code>, <code>bidirectional_shortest_path</code>, <code>descendants_at_distance</code>, <code>is_bipartite</code>.</li>
+        <li><strong>Early exit favors NetworkX:</strong> <code>has_path</code>, <code>bidirectional_shortest_path</code>, <code>descendants_at_distance</code>, <code>is_bipartite</code>, <code>find_cycle</code>, <code>is_maximal_matching</code>.</li>
         <li><strong>Python result construction dominates:</strong> <code>complement</code>, <code>all_pairs_shortest_path</code>, the <code>single_source_*</code> and <code>single_target_*</code> path variants.</li>
         <li><strong>The kernel is cheaper than remapping:</strong> degree centrality variants, <code>cycle_basis</code>, negative-cycle discovery, weak connectivity, and <code>single_source_dijkstra</code>.</li>
       </ul>
 
       <p>
-        Single source-target and unweighted forms of <code>shortest_path</code>
-        and <code>shortest_path_length</code> are also declined automatically.
+        Unweighted single source-target forms of <code>shortest_path</code> and
+        <code>shortest_path_length</code> are also declined automatically;
+        weighted pairs run the kernel with early termination and dispatch.
       </p>
 
       <h2 id="limits">Compatibility limits</h2>
@@ -90,9 +91,9 @@
         <li>No <code>MultiGraph</code> or <code>MultiDiGraph</code>.</li>
         <li>No callable weight functions.</li>
         <li>No <code>cutoff</code> on shortest-path functions.</li>
-        <li>Betweenness and closeness are unweighted; betweenness has no <code>k=</code> sampling.</li>
+        <li>Betweenness is unweighted and has no <code>k=</code> sampling; closeness accepts a string <code>distance</code>, callables fall through.</li>
         <li>Isomorphism is structural; <code>node_match</code> and <code>edge_match</code> fall through.</li>
-        <li><code>greedy_color</code> implements <code>largest_first</code> only.</li>
+        <li><code>greedy_color</code> implements <code>largest_first</code>, <code>saturation_largest_first</code>/<code>DSATUR</code>, and <code>independent_set</code>; other strategies fall through.</li>
         <li><code>max_weight_matching</code> requires integer edge weights.</li>
         <li>A* requires a consistent heuristic. Disable the check with <code>nx.config.backends.rustworkx.astar_heuristic_check = False</code> only when you already know it is consistent.</li>
       </ul>
@@ -102,8 +103,10 @@
       <p>
         When an answer is not unique, rustworkx may return a different valid
         ordering or structure. This applies to topological order, longest DAG
-        paths, cycle bases, some predecessor maps, negative-cycle starting
-        nodes, and minimum spanning forests with tied weights. PageRank, HITS,
+        paths, cycle bases, chain decompositions, greedy colorings, isomorphism
+        mappings, the order inside a BFS layer, some predecessor maps,
+        negative-cycle starting nodes, and minimum spanning forests with tied
+        weights. PageRank, HITS,
         Katz, and eigenvector centrality may differ slightly through
         floating-point ordering.
       </p>
