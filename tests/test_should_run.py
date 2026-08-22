@@ -73,3 +73,68 @@ def test_priority_falls_back_on_tiny_graphs():
         nx.config.backend_priority = []
     expected = nx.betweenness_centrality.orig_func(G)
     assert result == expected
+
+
+def test_no_auto_dispatch_functions_decline_automatic_selection():
+    """Functions measured slower than NetworkX must not be chosen automatically."""
+    import inspect
+
+    from nx_rustworkx.algorithms._utils import NO_AUTO_DISPATCH
+
+    G = nx.gnp_random_graph(400, 0.05, seed=0, directed=True)
+    stand_ins = {"source": 0, "target": 3, "n": 0, "distance": 1, "S": [0, 1]}
+    for name in NO_AUTO_DISPATCH:
+        reference = getattr(nx, name).orig_func
+        args = [
+            stand_ins[p.name]
+            for p in list(inspect.signature(reference).parameters.values())[1:]
+            if p.default is inspect.Parameter.empty and p.name in stand_ins
+        ]
+        assert BackendInterface.should_run(name, (G, *args), {}) is not True, name
+        # can_run must still accept them, so backend="rustworkx" keeps working.
+        assert BackendInterface.can_run(name, (G, *args), {}) is not False, name
+
+
+def test_explicit_backend_still_runs_declined_functions():
+    import pytest
+
+    G = nx.gnp_random_graph(300, 0.05, seed=0)
+    got = nx.degree_centrality(G, backend="rustworkx")
+    expected = nx.degree_centrality.orig_func(G)
+    # rustworkx divides by n - 1 where NetworkX multiplies by 1 / (n - 1), so
+    # the two can land one ULP apart.
+    assert got == pytest.approx(expected, rel=1e-12)
+    assert nx.has_path(G, 0, 5, backend="rustworkx") == nx.has_path.orig_func(G, 0, 5)
+
+
+def test_backend_priority_skips_declined_functions():
+    G = nx.gnp_random_graph(300, 0.05, seed=0)
+    nx.config.backend_priority = ["rustworkx"]
+    try:
+        assert nx.degree_centrality(G) == nx.degree_centrality.orig_func(G)
+        assert nx.complement(G).number_of_edges() == nx.complement.orig_func(G).number_of_edges()
+    finally:
+        nx.config.backend_priority = []
+
+
+def test_shortest_path_declines_where_networkx_wins():
+    G = nx.gnp_random_graph(400, 0.05, seed=0)
+    # A single pair goes to NetworkX's bidirectional search.
+    assert (
+        BackendInterface.should_run("shortest_path", (G,), {"source": 0, "target": 9})
+        is not True
+    )
+    assert (
+        BackendInterface.should_run(
+            "shortest_path_length", (G,), {"source": 0, "target": 9}
+        )
+        is not True
+    )
+    # Unweighted paths are cheaper to build in NetworkX than to remap.
+    assert BackendInterface.should_run("shortest_path", (G,), {"source": 0}) is not True
+    # Weighted paths and any lengths are worth converting for.
+    assert (
+        BackendInterface.should_run("shortest_path", (G,), {"source": 0, "weight": "weight"})
+        is True
+    )
+    assert BackendInterface.should_run("shortest_path_length", (G,), {}) is True

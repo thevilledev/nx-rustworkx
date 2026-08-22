@@ -122,15 +122,18 @@ def test_class_priority_builds_backend_graph(restore_nx_config):
 
 
 def test_fallback_to_nx_for_unimplemented(restore_nx_config):
-    G = rustworkx_graph([(0, 1), (1, 2)])
+    # Needs a function this backend does not implement. degree_centrality used
+    # to qualify; it is dispatched now, so this uses triangles, which rustworkx
+    # has no kernel for.
+    G = rustworkx_graph([(0, 1), (1, 2), (2, 0), (2, 3)])
     nx.config.fallback_to_nx = False
     with pytest.raises(NotImplementedError):
-        nx.degree_centrality(G)
+        nx.triangles(G)
 
     nx.config.fallback_to_nx = True
-    result = nx.degree_centrality(G)
-    assert result[1] == pytest.approx(1.0)
-    assert result[0] == pytest.approx(0.5)
+    result = nx.triangles(G)
+    assert result[0] == 1
+    assert result[3] == 0
 
 
 @needs_class_dispatch

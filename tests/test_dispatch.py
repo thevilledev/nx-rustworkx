@@ -70,3 +70,41 @@ def test_interface_exposes_phase1_algorithms():
         "is_isomorphic",
     ):
         assert hasattr(BackendInterface, name)
+
+
+def test_info_documents_every_implemented_function():
+    from nx_rustworkx._info import get_info
+    from nx_rustworkx.algorithms import ALGORITHMS
+    from nx_rustworkx.generators import GENERATORS
+
+    documented = set(get_info()["functions"])
+    assert documented == set(ALGORITHMS) | set(GENERATORS)
+
+
+def test_info_functions_are_dispatchable_in_networkx():
+    from nx_rustworkx.algorithms import ALGORITHMS
+
+    missing = [
+        name
+        for name in ALGORITHMS
+        if name not in nx.utils.backends._registered_algorithms
+    ]
+    assert missing == []
+
+
+def test_compat_probes_match_installed_networkx():
+    """The version probes must agree with what NetworkX actually does."""
+    import warnings
+
+    from nx_rustworkx import _compat
+
+    G = nx.DiGraph([(0, 1)])
+    assert _compat.immediate_dominators_includes_start() == (
+        0 in nx.immediate_dominators.orig_func(G, 0)
+    )
+    with warnings.catch_warnings():
+        warnings.simplefilter("ignore", FutureWarning)
+        reference = nx.single_target_shortest_path_length.orig_func(G, 1)
+    assert _compat.single_target_shortest_path_length_returns_dict() == isinstance(
+        reference, dict
+    )

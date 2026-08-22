@@ -23,9 +23,7 @@ jobs:
         run: python -c "import sys, networkx, rustworkx; print(sys.version); print('networkx', networkx.__version__); print('rustworkx', rustworkx.__version__)"
       - name: Package tests
         run: python -m pytest tests
-      - name: NetworkX betweenness suite
+      - name: NetworkX algorithm suite through the backend
         env:
           NETWORKX_TEST_BACKEND: rustworkx
-        run: >
-          python -m pytest --pyargs networkx.algorithms.centrality.tests
-          -k TestBetweennessCentrality
+        run: python -m pytest --pyargs networkx.algorithms -q

@@ -53,11 +53,13 @@ class RustworkxGraph:
         *,
         directed: bool,
         graph_attrs: dict[str, Any] | None = None,
+        node_attrs: dict[Any, dict[str, Any]] | None = None,
     ):
         self.rx_graph = rx_graph
         self.node_to_index = node_to_index
         self.index_to_node = index_to_node
         self.graph = dict(graph_attrs) if graph_attrs else {}
+        self.node_attrs = node_attrs
         self._directed = directed
         self.__networkx_cache__: dict[str, Any] = {}
 
