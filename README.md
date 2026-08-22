@@ -12,10 +12,18 @@ This is not a drop-in NetworkX replacement and not a rustworkx fork. Install it,
 pip install nx-rustworkx
 ```
 
+```bash
+uv add nx-rustworkx
+```
+
 From this repository:
 
 ```bash
 pip install -e .
+```
+
+```bash
+uv sync
 ```
 
 Requires Python 3.10+, NetworkX 3.4+, and a published rustworkx wheel. v0 does not compile custom Rust.
