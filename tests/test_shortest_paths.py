@@ -159,6 +159,46 @@ def test_point_to_point_lengths(G):
 
 
 @pytest.mark.parametrize("G", GRAPHS)
+def test_point_to_point_paths(G):
+    """The single-pair branch hands the target to the kernel; results must not change."""
+    reachable = nx.single_source_dijkstra_path_length.orig_func(G, 0)
+    target = max(reachable, key=reachable.get)
+    for func in (nx.dijkstra_path, nx.bellman_ford_path):
+        got = func(G, 0, target, backend="rustworkx")
+        assert got[0] == 0 and got[-1] == target
+        assert _cost(G, got, "weight") == pytest.approx(
+            _cost(G, func.orig_func(G, 0, target), "weight")
+        )
+    length, path = nx.single_source_dijkstra(G, 0, target=target, backend="rustworkx")
+    assert path[0] == 0 and path[-1] == target
+    assert length == pytest.approx(nx.dijkstra_path_length.orig_func(G, 0, target))
+    length, path = nx.single_source_bellman_ford(G, 0, target=target, backend="rustworkx")
+    assert path[0] == 0 and path[-1] == target
+    assert length == pytest.approx(nx.bellman_ford_path_length.orig_func(G, 0, target))
+
+
+def test_point_to_point_no_path_raises():
+    G = nx.Graph([(0, 1), (2, 3)])
+    for u, v in G.edges():
+        G[u][v]["weight"] = 1
+    with pytest.raises(nx.NetworkXNoPath):
+        nx.dijkstra_path(G, 0, 3, backend="rustworkx")
+    with pytest.raises(nx.NetworkXNoPath):
+        nx.shortest_path_length(G, source=0, target=3, weight="weight", backend="rustworkx")
+    with pytest.raises(nx.NetworkXNoPath):
+        nx.single_source_bellman_ford(G, 0, target=3, backend="rustworkx")
+
+
+def test_single_pair_negative_cycle_raises():
+    D = nx.DiGraph()
+    D.add_weighted_edges_from([(0, 1, 1), (1, 2, -3), (2, 0, 1), (0, 3, 1)])
+    with pytest.raises(nx.NetworkXUnbounded):
+        nx.bellman_ford_path(D, 0, 3, backend="rustworkx")
+    with pytest.raises(nx.NetworkXUnbounded):
+        nx.single_source_bellman_ford(D, 0, target=3, backend="rustworkx")
+
+
+@pytest.mark.parametrize("G", GRAPHS)
 def test_all_shortest_paths_matches(G):
     reachable = nx.single_source_shortest_path_length.orig_func(G, 0)
     target = max(reachable, key=reachable.get)

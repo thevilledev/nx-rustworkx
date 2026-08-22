@@ -1,6 +1,6 @@
 """Behavior probes for the NetworkX versions this backend supports.
 
-The package declares ``networkx>=3.2``, and a few functions changed shape inside
+The package declares ``networkx>=3.4``, and a few functions changed shape inside
 that range. Ask NetworkX's own implementation what it does once and cache the
 answer, rather than comparing version strings: the behavior is what matters, and
 a probe keeps working if a distribution backports or reverts a change.

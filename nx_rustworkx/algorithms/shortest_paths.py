@@ -107,25 +107,29 @@ def _raise_negative_cycle(exc):
     raise nx.NetworkXUnbounded("Negative cycle detected.") from exc
 
 
-def _single_source_paths(rx_graph, source_idx, weight, method):
+def _single_source_paths(rx_graph, source_idx, weight, method, target_idx=None):
+    """Paths from one source; ``target_idx`` lets the kernel stop early."""
     weight_fn = edge_weight_fn(weight)
     try:
         if method == "bellman-ford":
             return rx.bellman_ford_shortest_paths(
                 rx_graph,
                 source_idx,
+                target=target_idx,
                 weight_fn=weight_fn,
             )
         return rx.dijkstra_shortest_paths(
             rx_graph,
             source_idx,
+            target=target_idx,
             weight_fn=weight_fn,
         )
     except rx.NegativeCycle as exc:
         _raise_negative_cycle(exc)
 
 
-def _single_source_lengths(rx_graph, source_idx, weight, method):
+def _single_source_lengths(rx_graph, source_idx, weight, method, goal_idx=None):
+    """Lengths from one source; ``goal_idx`` lets the kernel stop early."""
     weight_fn = edge_weight_fn(weight)
     try:
         if method == "bellman-ford":
@@ -133,14 +137,27 @@ def _single_source_lengths(rx_graph, source_idx, weight, method):
                 rx_graph,
                 source_idx,
                 weight_fn,
+                goal=goal_idx,
             )
         return rx.dijkstra_shortest_path_lengths(
             rx_graph,
             source_idx,
             weight_fn,
+            goal=goal_idx,
         )
     except rx.NegativeCycle as exc:
         _raise_negative_cycle(exc)
+
+
+def _path_weight(rwg, path, weight):
+    """Total weight along an already-computed path of NetworkX node IDs."""
+    weight_fn = edge_weight_fn(weight)
+    node_to_index = rwg.node_to_index
+    rx_graph = rwg.rx_graph
+    total = 0.0
+    for u, v in zip(path, path[1:]):
+        total += weight_fn(rx_graph.get_edge_data(node_to_index[u], node_to_index[v]))
+    return total
 
 
 def _all_pairs_paths(rx_graph, weight, method):
@@ -199,7 +216,7 @@ def shortest_path(G, source=None, target=None, weight=None, method="dijkstra"):
             return [source]
         src = require_node(rwg, source, kind="Source")
         tgt = require_node(rwg, target, kind="Target")
-        raw = _single_source_paths(rwg.rx_graph, src, weight, method)
+        raw = _single_source_paths(rwg.rx_graph, src, weight, method, target_idx=tgt)
         if tgt not in raw:
             raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
         return remap_path(rwg, raw[tgt])
@@ -226,18 +243,19 @@ def shortest_path(G, source=None, target=None, weight=None, method="dijkstra"):
     return _iter()
 
 
-def _should_run_single_pair(G, source=None, target=None, **kwargs):
-    """NetworkX answers a single pair with a bidirectional search that stops as
-    soon as the two frontiers meet, which converting cannot beat."""
-    if source is not None and target is not None:
-        return "NetworkX's bidirectional search is faster for a single pair"
+def _should_run_single_pair(G, source=None, target=None, weight=None, **kwargs):
+    """NetworkX answers an unweighted single pair with a bidirectional search
+    that stops as soon as the two frontiers meet, which converting cannot beat.
+    A weighted pair runs the rustworkx kernel with early termination and wins."""
+    if source is not None and target is not None and weight is None:
+        return "NetworkX's bidirectional search is faster for an unweighted single pair"
     return default_should_run((G,), kwargs)
 
 
 def _should_run_shortest_path(
     G, source=None, target=None, weight=None, method="dijkstra", **kwargs
 ):
-    reason = _should_run_single_pair(G, source, target, **kwargs)
+    reason = _should_run_single_pair(G, source, target, weight=weight, **kwargs)
     if reason is not True:
         return reason
     if weight is None:
@@ -262,7 +280,7 @@ def shortest_path_length(G, source=None, target=None, weight=None, method="dijks
             return 0
         src = require_node(rwg, source, kind="Source")
         tgt = require_node(rwg, target, kind="Target")
-        raw = _single_source_lengths(rwg.rx_graph, src, weight, method)
+        raw = _single_source_lengths(rwg.rx_graph, src, weight, method, goal_idx=tgt)
         if tgt not in raw:
             raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
         return float(raw[tgt])
@@ -310,13 +328,8 @@ def single_source_dijkstra(G, source, target=None, cutoff=None, weight="weight")
         )
         if tgt not in paths:
             raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
-        lengths = rx.dijkstra_shortest_path_lengths(
-            rwg.rx_graph,
-            src,
-            edge_weight_fn(weight),
-            goal=tgt,
-        )
-        return float(lengths[tgt]), remap_path(rwg, paths[tgt])
+        path = remap_path(rwg, paths[tgt])
+        return _path_weight(rwg, path, weight), path
 
     paths = remap_path_dict(
         rwg,
@@ -466,11 +479,13 @@ def single_source_bellman_ford(G, source, target=None, weight="weight"):
         if source == target:
             require_node(rwg, source, kind="Source")
             return 0, [source]
-        path = shortest_path(G, source=source, target=target, weight=weight, method="bellman-ford")
-        length = shortest_path_length(
-            G, source=source, target=target, weight=weight, method="bellman-ford"
-        )
-        return length, path
+        src = require_node(rwg, source, kind="Source")
+        tgt = require_node(rwg, target, kind="Target")
+        raw = _single_source_paths(rwg.rx_graph, src, weight, "bellman-ford", target_idx=tgt)
+        if tgt not in raw:
+            raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
+        path = remap_path(rwg, raw[tgt])
+        return _path_weight(rwg, path, weight), path
     return (
         _lengths_from_source(rwg, source, weight, "bellman-ford"),
         _paths_from_source(rwg, source, weight, "bellman-ford"),
@@ -745,13 +760,7 @@ def astar_path_length(G, source, target, heuristic=None, weight="weight", *, cut
     _ = cutoff
     rwg = as_rw_graph(G)
     path = _astar_path(rwg, source, target, heuristic, weight)
-    weight_fn = edge_weight_fn(weight)
-    node_to_index = rwg.node_to_index
-    rx_graph = rwg.rx_graph
-    total = 0.0
-    for u, v in zip(path, path[1:]):
-        total += weight_fn(rx_graph.get_edge_data(node_to_index[u], node_to_index[v]))
-    return total
+    return _path_weight(rwg, path, weight)
 
 
 astar_path_length.can_run = _can_run_astar
