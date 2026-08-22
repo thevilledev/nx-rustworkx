@@ -2,7 +2,7 @@
 
 from __future__ import annotations
 
-from nx_rustworkx import algorithms
+from nx_rustworkx import algorithms, generators
 from nx_rustworkx.algorithms._utils import (
     NO_AUTO_DISPATCH,
     NO_AUTO_DISPATCH_REASON,
@@ -74,3 +74,6 @@ class BackendInterface:
 
 for _name in algorithms.ALGORITHMS:
     setattr(BackendInterface, _name, getattr(algorithms, _name))
+
+for _name in generators.GENERATORS:
+    setattr(BackendInterface, _name, getattr(generators, _name))

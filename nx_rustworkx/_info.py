@@ -177,6 +177,22 @@ _FUNCTIONS = {
 }
 
 
+#: name -> additional_docs for the graph constructors, which build a rustworkx
+#: graph directly instead of converting one.
+_GENERATORS = {
+    "graph__new__": (
+        "Returns a rustworkx-backed graph so later algorithm calls skip conversion."
+    ),
+    "digraph__new__": (
+        "Returns a rustworkx-backed digraph so later algorithm calls skip conversion."
+    ),
+    "empty_graph": (
+        "Constructs a rustworkx-backed empty graph. MultiGraph create_using is rejected."
+    ),
+    "from_edgelist": "Constructs a rustworkx-backed graph from an edgelist.",
+}
+
+
 def _docs(notes):
     return " ".join([_CONVERTED, _NO_MULTIGRAPH, *notes])
 
@@ -184,6 +200,9 @@ def _docs(notes):
 def get_info():
     """Return backend metadata used by NetworkX's documentation box."""
     functions = {name: {"additional_docs": _docs(notes)} for name, notes in _FUNCTIONS.items()}
+    functions.update(
+        {name: {"additional_docs": docs} for name, docs in _GENERATORS.items()}
+    )
     return {
         "backend_name": "rustworkx",
         "project": "nx-rustworkx",

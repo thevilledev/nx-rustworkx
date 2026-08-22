@@ -90,6 +90,8 @@ def default_should_run(args, kwargs):
     graphs = graphs_from_call(args, kwargs)
     if not graphs:
         return True
+    if all(isinstance(graph, RustworkxGraph) for graph in graphs):
+        return True
     min_nodes, min_edges = size_thresholds()
     for graph in graphs:
         if too_small(graph, min_nodes=min_nodes, min_edges=min_edges):
@@ -156,8 +158,8 @@ def as_directed_rx(rwg: RustworkxGraph):
     src = rwg.rx_graph
     if isinstance(src, rx.PyDiGraph):
         return src
-    directed = rx.PyDiGraph()
-    directed.add_nodes_from(rwg.index_to_node)
+    directed = rx.PyDiGraph(multigraph=False)
+    directed.add_nodes_from(src.get_node_data(i) for i in src.node_indices())
     for u, v, data in src.weighted_edge_list():
         directed.add_edge(u, v, data)
         if u != v:

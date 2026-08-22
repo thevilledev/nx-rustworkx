@@ -75,9 +75,10 @@ def test_interface_exposes_phase1_algorithms():
 def test_info_documents_every_implemented_function():
     from nx_rustworkx._info import get_info
     from nx_rustworkx.algorithms import ALGORITHMS
+    from nx_rustworkx.generators import GENERATORS
 
     documented = set(get_info()["functions"])
-    assert documented == set(ALGORITHMS)
+    assert documented == set(ALGORITHMS) | set(GENERATORS)
 
 
 def test_info_functions_are_dispatchable_in_networkx():
