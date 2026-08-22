@@ -7,20 +7,54 @@ import pytest
 
 from nx_rustworkx.graph import RustworkxGraph
 
+# Graph(backend=) / backend_priority.classes arrived in NetworkX 3.6.
+# Python 3.10 cannot install that (NetworkX 3.5 dropped 3.10).
+HAS_CLASS_DISPATCH = hasattr(nx.config.backend_priority, "classes")
+HAS_GENERATOR_PRIORITY = hasattr(nx.config.backend_priority, "generators")
+
+
+def rustworkx_graph(data=(), *, directed=False, **attr):
+    """Build a RustworkxGraph on every supported NetworkX version."""
+    G = nx.empty_graph(
+        0,
+        create_using=nx.DiGraph if directed else nx.Graph,
+        backend="rustworkx",
+    )
+    if data:
+        G.add_edges_from(data)
+    G.graph.update(attr)
+    return G
+
+needs_class_dispatch = pytest.mark.skipif(
+    not HAS_CLASS_DISPATCH,
+    reason="NetworkX < 3.6 has no Graph(backend=) / backend_priority.classes",
+)
+needs_generator_priority = pytest.mark.skipif(
+    not HAS_GENERATOR_PRIORITY,
+    reason="NetworkX < 3.5 has no backend_priority.generators",
+)
+
 
 @pytest.fixture
 def restore_nx_config():
-    prev_classes = list(nx.config.backend_priority.classes)
-    prev_gens = list(nx.config.backend_priority.generators)
-    prev_algos = list(nx.config.backend_priority.algos)
+    prio = nx.config.backend_priority
+    prev_classes = list(getattr(prio, "classes", []))
+    prev_gens = list(getattr(prio, "generators", []))
+    prev_algos = list(getattr(prio, "algos", prio if isinstance(prio, list) else []))
     prev_fallback = nx.config.fallback_to_nx
     yield
-    nx.config.backend_priority.classes = prev_classes
-    nx.config.backend_priority.generators = prev_gens
-    nx.config.backend_priority.algos = prev_algos
+    if HAS_CLASS_DISPATCH:
+        nx.config.backend_priority.classes = prev_classes
+    if HAS_GENERATOR_PRIORITY:
+        nx.config.backend_priority.generators = prev_gens
+    if hasattr(prio, "algos"):
+        nx.config.backend_priority.algos = prev_algos
+    elif isinstance(prio, list):
+        nx.config.backend_priority = prev_algos
     nx.config.fallback_to_nx = prev_fallback
 
 
+@needs_class_dispatch
 def test_graph_backend_kwarg_builds_rustworkx_graph():
     G = nx.Graph(backend="rustworkx")
     assert isinstance(G, RustworkxGraph)
@@ -33,6 +67,7 @@ def test_graph_backend_kwarg_builds_rustworkx_graph():
     assert set(got) == {"a", "b", "isolated"}
 
 
+@needs_class_dispatch
 def test_graph_backend_from_edgelist():
     G = nx.Graph([("s", "t"), ("t", "u")], backend="rustworkx", name="demo")
     assert isinstance(G, RustworkxGraph)
@@ -40,6 +75,7 @@ def test_graph_backend_from_edgelist():
     assert nx.shortest_path(G, "s", "u") == ["s", "t", "u"]
 
 
+@needs_class_dispatch
 def test_digraph_backend_kwarg():
     G = nx.DiGraph([("a", "b"), ("b", "c")], backend="rustworkx")
     assert isinstance(G, RustworkxGraph)
@@ -58,6 +94,7 @@ def test_empty_graph_and_from_edgelist_backend():
     assert H.number_of_edges() == 2
 
 
+@needs_generator_priority
 def test_generator_priority_skips_conversion(restore_nx_config, monkeypatch):
     import nx_rustworkx.convert as convert_mod
 
@@ -76,6 +113,7 @@ def test_generator_priority_skips_conversion(restore_nx_config, monkeypatch):
     assert calls["n"] == 0
 
 
+@needs_class_dispatch
 def test_class_priority_builds_backend_graph(restore_nx_config):
     nx.config.backend_priority.classes = ["rustworkx"]
     G = nx.Graph([(1, 2), (2, 3)])
@@ -84,7 +122,7 @@ def test_class_priority_builds_backend_graph(restore_nx_config):
 
 
 def test_fallback_to_nx_for_unimplemented(restore_nx_config):
-    G = nx.Graph([(0, 1), (1, 2)], backend="rustworkx")
+    G = rustworkx_graph([(0, 1), (1, 2)])
     nx.config.fallback_to_nx = False
     with pytest.raises(NotImplementedError):
         nx.degree_centrality(G)
@@ -95,6 +133,7 @@ def test_fallback_to_nx_for_unimplemented(restore_nx_config):
     assert result[0] == pytest.approx(0.5)
 
 
+@needs_class_dispatch
 def test_multigraph_constructor_rejected():
     with pytest.raises(NotImplementedError):
         nx.MultiGraph(backend="rustworkx")
@@ -102,7 +141,7 @@ def test_multigraph_constructor_rejected():
 
 def test_constructed_graph_matches_networkx_betweenness():
     edges = [(0, 1), (1, 2), (2, 3), (3, 0), (0, 2)]
-    rw = nx.Graph(edges, backend="rustworkx")
+    rw = rustworkx_graph(edges)
     nx_g = nx.Graph(edges)
     got = nx.betweenness_centrality(rw)
     expected = nx.betweenness_centrality.orig_func(nx_g)
@@ -111,8 +150,7 @@ def test_constructed_graph_matches_networkx_betweenness():
 
 
 def test_remove_node_keeps_dense_indices():
-    G = nx.Graph(backend="rustworkx")
-    G.add_edges_from([(0, 1), (1, 2), (2, 3)])
+    G = rustworkx_graph([(0, 1), (1, 2), (2, 3)])
     G.remove_node(1)
     assert set(G) == {0, 2, 3}
     assert list(G.rx_graph.node_indices()) == list(range(G.number_of_nodes()))

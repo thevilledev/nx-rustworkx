@@ -48,6 +48,8 @@ nx.betweenness_centrality(G, backend="rustworkx")
 
 ## Skip conversion (Phase 3)
 
+`nx.empty_graph(..., backend="rustworkx")` and `nx.from_edgelist(..., backend="rustworkx")` work on NetworkX 3.2+. `nx.Graph(..., backend="rustworkx")` and `NETWORKX_BACKEND_PRIORITY_CLASSES` need NetworkX 3.6+ (Python 3.11+).
+
 Build the rustworkx graph once, then algorithms run without `convert_from_nx`:
 
 ```python
