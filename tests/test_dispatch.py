@@ -61,7 +61,7 @@ def test_string_nodes_dispatch():
         assert got[node] == pytest_approx(expected[node])
 
 
-def test_interface_exposes_phase1_algorithms():
+def test_interface_exposes_core_algorithms():
     for name in (
         "betweenness_centrality",
         "pagerank",

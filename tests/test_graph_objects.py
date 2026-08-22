@@ -1,4 +1,4 @@
-"""Phase 3: rustworkx-backed graph objects and fallback."""
+"""Rustworkx-backed graph objects: construction, views, and fallback."""
 
 from __future__ import annotations
 
@@ -159,3 +159,119 @@ def test_remove_node_keeps_dense_indices():
     assert list(G.rx_graph.node_indices()) == list(range(G.number_of_nodes()))
     assert not G.has_edge(0, 2)
     assert G.has_edge(2, 3)
+
+
+def _populate(make):
+    """Same graph built through the backend and through NetworkX."""
+    G = make()
+    G.add_node(1, color="red")
+    G.add_edge(1, 2, weight=5)
+    G.add_edge(2, 3, weight=7)
+    G.add_nodes_from([(4, {"color": "blue"})])
+    G.add_node(1, size=3)  # update an existing node
+    return G
+
+
+@pytest.fixture
+def pair():
+    return _populate(lambda: nx.empty_graph(0, backend="rustworkx")), _populate(nx.Graph)
+
+
+VIEW_CASES = {
+    "set(nodes)": lambda G: set(G.nodes),
+    "len(nodes)": lambda G: len(G.nodes),
+    "nodes[n]": lambda G: dict(G.nodes[1]),
+    "nodes(data=True)": lambda G: sorted((n, dict(d)) for n, d in G.nodes(data=True)),
+    "nodes(data=key)": lambda G: sorted(G.nodes(data="color")),
+    "nodes(data,default)": lambda G: sorted(G.nodes(data="color", default="none")),
+    "len(edges)": lambda G: len(G.edges),
+    "set(edges)": lambda G: {frozenset(e) for e in G.edges},
+    "edges(data=key)": lambda G: sorted((frozenset((u, v)), w) for u, v, w in G.edges(data="weight")),
+    "edges(nbunch)": lambda G: {frozenset(e) for e in G.edges(1)},
+    "edges(nbunch list)": lambda G: {frozenset(e) for e in G.edges([1, 3])},
+    "edge membership": lambda G: ((1, 2) in G.edges, (1, 3) in G.edges),
+    "degree(n)": lambda G: G.degree(2),
+    "degree[n]": lambda G: G.degree[2],
+    "iter(degree)": lambda G: sorted(G.degree),
+    "degree(nbunch)": lambda G: sorted(G.degree([1, 2])),
+    "len(degree)": lambda G: len(G.degree),
+    "node membership": lambda G: (1 in G.nodes, 99 in G.nodes),
+    "unhashable is not a node": lambda G: (G.has_node([1]), [1] in G),
+}
+
+
+@pytest.mark.parametrize("case", list(VIEW_CASES))
+def test_views_match_networkx(pair, case):
+    backend_graph, nx_graph = pair
+    read = VIEW_CASES[case]
+    assert read(backend_graph) == read(nx_graph)
+
+
+def test_node_attributes_survive_add_and_update():
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_node("a", color="red")
+    assert G.nodes["a"] == {"color": "red"}
+    G.add_node("a", size=2)
+    assert G.nodes["a"] == {"color": "red", "size": 2}
+    # The view hands back the live dict, so assignment sticks.
+    G.nodes["a"]["shape"] = "box"
+    assert G.nodes["a"]["shape"] == "box"
+
+
+def test_add_nodes_from_applies_shared_and_per_node_attrs():
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_nodes_from(["a", ("b", {"color": "blue"})], kind="node")
+    assert G.nodes["a"] == {"kind": "node"}
+    assert G.nodes["b"] == {"kind": "node", "color": "blue"}
+
+
+def test_node_attributes_follow_copies_and_orientation():
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_node(1, color="red")
+    G.add_edge(1, 2)
+    assert G.copy().nodes[1] == {"color": "red"}
+    assert G.to_directed().nodes[1] == {"color": "red"}
+    assert G.to_directed().to_undirected().nodes[1] == {"color": "red"}
+
+
+def test_remove_node_and_clear_drop_attributes():
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_node(1, color="red")
+    G.add_edge(1, 2)
+    G.remove_node(1)
+    assert 1 not in G.nodes
+    G.add_node(1)
+    assert G.nodes[1] == {}
+    G.clear()
+    assert len(G.nodes) == 0
+
+
+def test_node_attributes_reach_networkx_on_fallback(restore_nx_config):
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_node(1, color="red")
+    G.add_edge(1, 2)
+    G.add_edge(2, 3)
+    nx.config.fallback_to_nx = True
+    # triangles converts back through convert_to_nx; attributes must survive.
+    assert nx.triangles(G) == {1: 0, 2: 0, 3: 0}
+    from nx_rustworkx.convert import convert_to_nx
+
+    assert convert_to_nx(G).nodes[1] == {"color": "red"}
+
+
+def test_missing_node_attribute_lookup_raises_keyerror():
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_node(1)
+    with pytest.raises(KeyError):
+        G.nodes[99]
+
+
+def test_in_and_out_degree_are_directed_only():
+    D = nx.empty_graph(0, create_using=nx.DiGraph, backend="rustworkx")
+    D.add_edge("x", "y")
+    assert D.degree("y") == 1
+    assert D.in_degree("y") == 1
+    assert D.out_degree("y") == 0
+    U = nx.empty_graph(0, backend="rustworkx")
+    with pytest.raises(AttributeError):
+        U.in_degree

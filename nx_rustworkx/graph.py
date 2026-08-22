@@ -31,6 +31,190 @@ class _AdjView:
             yield node, self[node]
 
 
+class _NodeView:
+    """``G.nodes``: iterate nodes, index for attributes, call for data."""
+
+    __slots__ = ("_graph",)
+
+    def __init__(self, graph: RustworkxGraph):
+        self._graph = graph
+
+    def __iter__(self):
+        return iter(self._graph.node_to_index)
+
+    def __len__(self) -> int:
+        return len(self._graph.node_to_index)
+
+    def __contains__(self, node: Any) -> bool:
+        try:
+            return node in self._graph.node_to_index
+        except TypeError:  # unhashable values are simply not nodes
+            return False
+
+    def __getitem__(self, node: Any) -> dict:
+        if node not in self._graph.node_to_index:
+            raise KeyError(node)
+        # Hand back the live dict so G.nodes[n][key] = value sticks.
+        return self._graph.node_attrs.setdefault(node, {})
+
+    def __call__(self, data=False, default=None):
+        if data is False:
+            return self
+        return _NodeDataView(self._graph, data, default)
+
+    def data(self, data=True, default=None):
+        return self(data=data, default=default)
+
+    def __repr__(self) -> str:
+        return f"NodeView({list(self)!r})"
+
+
+class _NodeDataView:
+    """``G.nodes(data=True)`` or ``G.nodes(data="key")``."""
+
+    __slots__ = ("_graph", "_data", "_default")
+
+    def __init__(self, graph: RustworkxGraph, data, default):
+        self._graph = graph
+        self._data = data
+        self._default = default
+
+    def __iter__(self):
+        attrs = self._graph.node_attrs
+        for node in self._graph.node_to_index:
+            data = attrs.get(node, {})
+            if self._data is True:
+                yield node, data
+            else:
+                yield node, data.get(self._data, self._default)
+
+    def __len__(self) -> int:
+        return len(self._graph.node_to_index)
+
+    def __repr__(self) -> str:
+        return f"NodeDataView({list(self)!r})"
+
+
+class _EdgeView:
+    """``G.edges``: iterate edges, call for a filtered or data-bearing view."""
+
+    __slots__ = ("_graph",)
+
+    def __init__(self, graph: RustworkxGraph):
+        self._graph = graph
+
+    def __iter__(self):
+        return iter(_EdgeDataView(self._graph, None, False, None))
+
+    def __len__(self) -> int:
+        return self._graph.number_of_edges()
+
+    def __contains__(self, edge) -> bool:
+        try:
+            u, v = edge
+        except (TypeError, ValueError):
+            return False
+        return self._graph.has_edge(u, v)
+
+    def __call__(self, nbunch=None, data=False, default=None):
+        if nbunch is None and data is False:
+            return self
+        return _EdgeDataView(self._graph, nbunch, data, default)
+
+    def __repr__(self) -> str:
+        return f"EdgeView({list(self)!r})"
+
+
+class _EdgeDataView:
+    """``G.edges(nbunch=..., data=...)``."""
+
+    __slots__ = ("_graph", "_nbunch", "_data", "_default")
+
+    def __init__(self, graph: RustworkxGraph, nbunch, data, default):
+        self._graph = graph
+        self._nbunch = nbunch
+        self._data = data
+        self._default = default
+
+    def _wanted(self):
+        if self._nbunch is None:
+            return None
+        if self._graph.has_node(self._nbunch):
+            return {self._nbunch}
+        return set(self._nbunch)
+
+    def __iter__(self):
+        graph = self._graph
+        wanted = self._wanted()
+        index_to_node = graph.index_to_node
+        for u_idx, v_idx, payload in graph.rx_graph.weighted_edge_list():
+            u = index_to_node[u_idx]
+            v = index_to_node[v_idx]
+            if wanted is not None and u not in wanted and v not in wanted:
+                continue
+            if self._data is False:
+                yield u, v
+                continue
+            data = payload if isinstance(payload, dict) else {}
+            if self._data is True:
+                yield u, v, data
+            else:
+                yield u, v, data.get(self._data, self._default)
+
+    def __len__(self) -> int:
+        return sum(1 for _ in self)
+
+    def __repr__(self) -> str:
+        return f"EdgeDataView({list(self)!r})"
+
+
+class _DegreeView:
+    """``G.degree``: call or index for a node's degree, iterate for all."""
+
+    __slots__ = ("_graph", "_kind")
+
+    def __init__(self, graph: RustworkxGraph, kind: str = "total"):
+        self._graph = graph
+        self._kind = kind
+
+    def _degree(self, node) -> int:
+        graph = self._graph
+        index = graph.node_to_index[node]
+        rx_graph = graph.rx_graph
+        if not graph.is_directed():
+            return int(rx_graph.degree(index))
+        if self._kind == "in":
+            return int(rx_graph.in_degree(index))
+        if self._kind == "out":
+            return int(rx_graph.out_degree(index))
+        # NetworkX reports a directed node's degree as in plus out.
+        return int(rx_graph.in_degree(index)) + int(rx_graph.out_degree(index))
+
+    def __getitem__(self, node) -> int:
+        return self._degree(node)
+
+    def __iter__(self):
+        for node in self._graph.node_to_index:
+            yield node, self._degree(node)
+
+    def __len__(self) -> int:
+        return len(self._graph.node_to_index)
+
+    def __call__(self, nbunch=None, weight=None):
+        if weight is not None:
+            raise NotImplementedError(
+                "nx-rustworkx does not implement weighted degree"
+            )
+        if nbunch is None:
+            return self
+        if self._graph.has_node(nbunch):
+            return self._degree(nbunch)
+        return ((node, self._degree(node)) for node in nbunch)
+
+    def __repr__(self) -> str:
+        return f"DegreeView({dict(self)!r})"
+
+
 class RustworkxGraph:
     """A rustworkx graph plus the NetworkX node-to-index map.
 
@@ -59,7 +243,7 @@ class RustworkxGraph:
         self.node_to_index = node_to_index
         self.index_to_node = index_to_node
         self.graph = dict(graph_attrs) if graph_attrs else {}
-        self.node_attrs = node_attrs
+        self.node_attrs = dict(node_attrs) if node_attrs else {}
         self._directed = directed
         self.__networkx_cache__: dict[str, Any] = {}
 
@@ -133,7 +317,7 @@ class RustworkxGraph:
         return self.rx_graph.num_nodes()
 
     def __contains__(self, node: Any) -> bool:
-        return node in self.node_to_index
+        return self.has_node(node)
 
     def __iter__(self):
         return iter(self.node_to_index)
@@ -154,11 +338,34 @@ class RustworkxGraph:
         return _AdjView(self)
 
     @property
-    def nodes(self):
-        return list(self.node_to_index)
+    def nodes(self) -> _NodeView:
+        return _NodeView(self)
+
+    @property
+    def edges(self) -> _EdgeView:
+        return _EdgeView(self)
+
+    @property
+    def degree(self) -> _DegreeView:
+        return _DegreeView(self)
+
+    @property
+    def in_degree(self) -> _DegreeView:
+        if not self._directed:
+            raise AttributeError("in_degree is only defined for directed graphs")
+        return _DegreeView(self, "in")
+
+    @property
+    def out_degree(self) -> _DegreeView:
+        if not self._directed:
+            raise AttributeError("out_degree is only defined for directed graphs")
+        return _DegreeView(self, "out")
 
     def has_node(self, n) -> bool:
-        return n in self.node_to_index
+        try:
+            return n in self.node_to_index
+        except TypeError:  # an unhashable value is simply not a node
+            return False
 
     def has_edge(self, u, v) -> bool:
         try:
@@ -169,21 +376,23 @@ class RustworkxGraph:
             return False
 
     def add_node(self, node_for_adding, **attr):
-        _ = attr
         if node_for_adding in self.node_to_index:
+            if attr:
+                self.node_attrs.setdefault(node_for_adding, {}).update(attr)
             return self.node_to_index[node_for_adding]
+        if attr:
+            self.node_attrs.setdefault(node_for_adding, {}).update(attr)
         idx = self.rx_graph.add_node(node_for_adding)
         self._bind_index(idx, node_for_adding)
         self.__networkx_cache__.clear()
         return idx
 
     def add_nodes_from(self, nodes_for_adding, **attr):
-        _ = attr
         for node in nodes_for_adding:
             if isinstance(node, tuple) and len(node) == 2 and isinstance(node[1], dict):
-                self.add_node(node[0], **node[1])
+                self.add_node(node[0], **{**attr, **node[1]})
             else:
-                self.add_node(node)
+                self.add_node(node, **attr)
 
     def add_edge(self, u_of_edge, v_of_edge, **attr):
         self.add_node(u_of_edge)
@@ -220,6 +429,7 @@ class RustworkxGraph:
         idx = self.node_to_index[n]
         self.rx_graph.remove_node(idx)
         del self.node_to_index[n]
+        self.node_attrs.pop(n, None)
         if idx < len(self.index_to_node):
             self.index_to_node[idx] = None
         self._compact()
@@ -233,24 +443,13 @@ class RustworkxGraph:
         self.rx_graph.clear()
         self.node_to_index.clear()
         self.index_to_node.clear()
+        self.node_attrs.clear()
         self.graph.clear()
         self.__networkx_cache__.clear()
 
     def neighbors(self, n):
         idx = self.node_to_index[n]
         return (self.index_to_node[i] for i in self.rx_graph.neighbors(idx))
-
-    def edges(self, nbunch=None, data=False):
-        wanted = None if nbunch is None else {nbunch} if self.has_node(nbunch) else set(nbunch)
-        for u_idx, v_idx, payload in self.rx_graph.weighted_edge_list():
-            u = self.index_to_node[u_idx]
-            v = self.index_to_node[v_idx]
-            if wanted is not None and u not in wanted and v not in wanted:
-                continue
-            if data:
-                yield (u, v, payload if payload is not None else {})
-            else:
-                yield (u, v)
 
     def copy(self) -> RustworkxGraph:
         copied = type(self)(
@@ -259,6 +458,7 @@ class RustworkxGraph:
             list(self.index_to_node),
             directed=self._directed,
             graph_attrs=self.graph,
+            node_attrs=self.node_attrs,
         )
         return copied
 
@@ -279,6 +479,7 @@ class RustworkxGraph:
             list(self.index_to_node),
             directed=True,
             graph_attrs=self.graph,
+            node_attrs=self.node_attrs,
         )
 
     def to_undirected(self) -> RustworkxGraph:
@@ -301,6 +502,7 @@ class RustworkxGraph:
             list(self.index_to_node),
             directed=False,
             graph_attrs=self.graph,
+            node_attrs=self.node_attrs,
         )
 
     def _dense_payloads(self) -> list:
@@ -320,10 +522,12 @@ class RustworkxGraph:
             for u, v, data in self.rx_graph.weighted_edge_list()
         ]
         graph_attrs = dict(self.graph)
+        node_attrs = dict(self.node_attrs)
         directed = self._directed
         self.clear()
         self._directed = directed
         self.graph.update(graph_attrs)
+        self.node_attrs.update(node_attrs)
         self.add_nodes_from(nodes)
         for u, v, data in edges:
             if isinstance(data, dict) and data:

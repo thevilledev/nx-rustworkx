@@ -8,7 +8,6 @@ interface and the metadata in :mod:`nx_rustworkx._info`.
 from nx_rustworkx.algorithms import (
     centrality,
     coloring,
-    community,
     connectivity,
     core,
     cycles,
@@ -25,7 +24,6 @@ from nx_rustworkx.algorithms import (
 )
 from nx_rustworkx.algorithms.centrality import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.coloring import *  # noqa: F401,F403
-from nx_rustworkx.algorithms.community import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.connectivity import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.core import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.cycles import *  # noqa: F401,F403
@@ -43,7 +41,6 @@ from nx_rustworkx.algorithms.trees import *  # noqa: F401,F403
 _MODULES = (
     centrality,
     coloring,
-    community,
     connectivity,
     core,
     cycles,
