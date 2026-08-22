@@ -1,0 +1,125 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Develop, test, lint, and understand the nx-rustworkx backend.">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Developing nx-rustworkx">
+    <meta property="og:description" content="Tests, linting, benchmarks, and project architecture.">
+    <meta property="og:url" content="https://ville.dev/nx-rustworkx/development.html">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Developing nx-rustworkx">
+    <meta name="twitter:description" content="Tests, linting, benchmarks, and project architecture.">
+    <link rel="canonical" href="https://ville.dev/nx-rustworkx/development.html">
+    <link rel="stylesheet" href="styles.css">
+    <title>Developing nx-rustworkx</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <nav class="top" aria-label="Primary navigation">
+      [ <a href="index.html">overview</a> |
+      <a href="usage.html">usage</a> |
+      <a href="algorithms.html">algorithms</a> |
+      <a href="benchmarks.html">benchmarks</a> |
+      development |
+      <a href="https://github.com/thevilledev/nx-rustworkx">source</a> ]
+    </nav>
+
+    <main id="content">
+      <h1>Development</h1>
+
+      <p>
+        The backend is Python glue around published rustworkx wheels. Each
+        wrapper converts arguments, calls a rustworkx implementation, and maps
+        the result back to NetworkX's public shape.
+      </p>
+
+      <h2 id="setup">Set up</h2>
+
+      <pre><code>git clone https://github.com/thevilledev/nx-rustworkx.git
+cd nx-rustworkx
+uv sync --extra test</code></pre>
+
+      <p>Editable installation without uv:</p>
+
+      <pre><code>pip install -e ".[test]"</code></pre>
+
+      <h2 id="tests">Tests</h2>
+
+      <pre><code>uv run pytest tests</code></pre>
+
+      <p>
+        The package suite compares results with NetworkX function by function.
+        Signature tests also require every backend function to preserve
+        NetworkX's positional parameters and defaults.
+      </p>
+
+      <p>NetworkX's own algorithm suite is the broader compatibility check:</p>
+
+      <pre><code>NETWORKX_TEST_BACKEND=rustworkx pytest --pyargs networkx.algorithms</code></pre>
+
+      <h2 id="quality">Static checks</h2>
+
+      <pre><code>uv run zizmor .
+uv run pyright
+uv run python scripts/pyruff_check.py</code></pre>
+
+      <p>
+        zizmor audits GitHub Actions, pyright checks types, and pyruff checks
+        lint and formatting. The current pyruff release requires Python 3.11 or newer.
+      </p>
+
+      <h2 id="layout">Layout</h2>
+
+      <pre><code>nx_rustworkx/
+  interface.py          BackendInterface
+  convert.py            NetworkX &lt;-&gt; rustworkx and node maps
+  graph.py              rustworkx-backed graph object
+  generators.py         graph constructors
+  algorithms/           thin wrappers by algorithm area
+  _info.py              backend metadata and caveats
+
+benches/                parity and centrality benchmarks
+tests/                  package and dispatch tests
+website/                this static documentation site</code></pre>
+
+      <p>
+        Each module in <code>algorithms/</code> lists the NetworkX functions it
+        implements in <code>__all__</code>. Their union drives both the backend
+        interface and the metadata published to NetworkX.
+      </p>
+
+      <h2 id="entry-points">Backend entry points</h2>
+
+      <pre><code>[project.entry-points."networkx.backends"]
+rustworkx = "nx_rustworkx.interface:BackendInterface"
+
+[project.entry-points."networkx.backend_info"]
+rustworkx = "nx_rustworkx._info:get_info"</code></pre>
+
+      <h2 id="contributing">Contributing</h2>
+
+      <p>
+        Add or change a wrapper only when its result matches NetworkX's public
+        contract. Include parity tests, declare unsupported argument shapes in
+        <code>can_run</code>, and let benchmark evidence decide whether
+        <code>should_run</code> selects it automatically.
+      </p>
+
+      <p>
+        Use <a href="https://github.com/thevilledev/nx-rustworkx/issues">issues</a>
+        for bugs and proposals. Contributions are BSD-3-Clause.
+      </p>
+    </main>
+
+    <footer>
+      <p>
+        <a href="index.html">overview</a> &middot;
+        <a href="benchmarks.html">benchmarks</a> &middot;
+        <a href="https://github.com/thevilledev/nx-rustworkx">source</a>
+      </p>
+    </footer>
+  </body>
+</html>

@@ -1,0 +1,145 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="nx-rustworkx benchmark results, including graph conversion and result remapping.">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="nx-rustworkx benchmarks">
+    <meta property="og:description" content="Measured end-to-end speedups and the policy that keeps slower calls on NetworkX.">
+    <meta property="og:url" content="https://ville.dev/nx-rustworkx/benchmarks.html">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="nx-rustworkx benchmarks">
+    <meta name="twitter:description" content="Measured end-to-end speedups and the policy that keeps slower calls on NetworkX.">
+    <link rel="canonical" href="https://ville.dev/nx-rustworkx/benchmarks.html">
+    <link rel="stylesheet" href="styles.css">
+    <title>nx-rustworkx benchmarks</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <nav class="top" aria-label="Primary navigation">
+      [ <a href="index.html">overview</a> |
+      <a href="usage.html">usage</a> |
+      <a href="algorithms.html">algorithms</a> |
+      benchmarks |
+      <a href="development.html">development</a> |
+      <a href="https://github.com/thevilledev/nx-rustworkx">source</a> ]
+    </nav>
+
+    <main id="content">
+      <h1>Benchmarks</h1>
+
+      <p>
+        Backend speed is an end-to-end question. These results include
+        conversion from NetworkX, the rustworkx kernel, and remapping to the
+        original node IDs. Both implementations receive the same graphs and
+        seeds.
+      </p>
+
+      <div class="notice">
+        <p>
+          <strong>Dispatch follows the measurements.</strong> At 2,000 nodes,
+          73 of 93 supported functions are faster end to end. The remaining 20
+          stay on NetworkX under automatic backend priority.
+        </p>
+      </div>
+
+      <h2 id="parity-suite">Parity suite</h2>
+
+      <p>
+        <a href="https://github.com/thevilledev/nx-rustworkx/blob/main/benches/bench_parity.py"><code>bench_parity.py</code></a>
+        runs one representative call for every supported function. It fails if
+        a materially slower function would still be selected automatically.
+      </p>
+
+      <pre><code>python benches/bench_parity.py --nodes 2000</code></pre>
+
+      <div class="table-scroll">
+        <table>
+          <caption>Sample at n=2,000 on a 4-core Linux VM</caption>
+          <thead>
+            <tr>
+              <th scope="col">Function</th>
+              <th scope="col" class="n">rustworkx (s)</th>
+              <th scope="col" class="n">NetworkX (s)</th>
+              <th scope="col" class="n">Speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td><code>is_isomorphic</code></td><td class="n">0.0228</td><td class="n">13.42</td><td class="n">589&times;</td></tr>
+            <tr><td><code>bridges</code></td><td class="n">0.00058</td><td class="n">0.134</td><td class="n">232&times;</td></tr>
+            <tr><td><code>katz_centrality</code></td><td class="n">0.0055</td><td class="n">0.393</td><td class="n">72&times;</td></tr>
+            <tr><td><code>group_betweenness_centrality</code></td><td class="n">0.378</td><td class="n">25.63</td><td class="n">68&times;</td></tr>
+            <tr><td><code>transitivity</code></td><td class="n">0.0024</td><td class="n">0.149</td><td class="n">63&times;</td></tr>
+            <tr><td><code>betweenness_centrality</code></td><td class="n">0.313</td><td class="n">16.98</td><td class="n">54&times;</td></tr>
+            <tr><td><code>floyd_warshall</code></td><td class="n">0.354</td><td class="n">13.30</td><td class="n">38&times;</td></tr>
+            <tr><td><code>max_weight_matching</code></td><td class="n">0.167</td><td class="n">4.09</td><td class="n">25&times;</td></tr>
+            <tr><td><code>all_pairs_dijkstra_path_length</code></td><td class="n">0.076</td><td class="n">1.76</td><td class="n">23&times;</td></tr>
+            <tr><td><code>eigenvector_centrality</code></td><td class="n">0.0042</td><td class="n">0.068</td><td class="n">16&times;</td></tr>
+            <tr><td><code>minimum_spanning_tree</code></td><td class="n">0.0149</td><td class="n">0.066</td><td class="n">4.4&times;</td></tr>
+            <tr><td><code>core_number</code></td><td class="n">0.0076</td><td class="n">0.0118</td><td class="n">1.6&times;</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p class="fine">
+        These figures describe one machine and workload, not a universal
+        ranking. Run the scripts on your own graph shapes before tuning cutoffs.
+      </p>
+
+      <h2 id="conversion">Conversion cost</h2>
+
+      <p>
+        <a href="https://github.com/thevilledev/nx-rustworkx/blob/main/benches/bench_centrality.py"><code>bench_centrality.py</code></a>
+        separates conversion from the betweenness-centrality kernel.
+      </p>
+
+      <pre><code>python benches/bench_centrality.py</code></pre>
+
+      <div class="table-scroll">
+        <table>
+          <caption><code>betweenness_centrality</code> on <code>gnp_random_graph(n, p, seed=1)</code></caption>
+          <thead>
+            <tr>
+              <th scope="col" class="n">n</th>
+              <th scope="col" class="n">m</th>
+              <th scope="col" class="n">convert (s)</th>
+              <th scope="col" class="n">kernel (s)</th>
+              <th scope="col" class="n">total (s)</th>
+              <th scope="col" class="n">NetworkX (s)</th>
+              <th scope="col" class="n">speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td class="n">200</td><td class="n">2,035</td><td class="n">0.00031</td><td class="n">0.0019</td><td class="n">0.0048</td><td class="n">0.067</td><td class="n">14&times;</td></tr>
+            <tr><td class="n">2,000</td><td class="n">20,050</td><td class="n">0.0043</td><td class="n">0.19</td><td class="n">0.30</td><td class="n">8.4</td><td class="n">28&times;</td></tr>
+            <tr><td class="n">20,000</td><td class="n">200,473</td><td class="n">0.098</td><td class="n">50</td><td class="n">52</td><td class="n">&mdash;</td><td class="n">&mdash;</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        The 2,000-node row is the public milestone graph. The NetworkX run at
+        20,000 nodes is omitted because the pure-Python Brandes computation is
+        impractical there.
+      </p>
+
+      <h2 id="interpretation">Read the result</h2>
+
+      <ul>
+        <li>Use backend priority when workloads mix cheap and expensive calls.</li>
+        <li>Use an explicit backend when you value a predictable implementation over the cutoff.</li>
+        <li>Use a backend graph when repeated conversion is a meaningful share of runtime.</li>
+      </ul>
+    </main>
+
+    <footer>
+      <p>
+        <a href="algorithms.html">algorithm policy</a> &middot;
+        <a href="development.html">run the suite</a> &middot;
+        <a href="https://github.com/thevilledev/nx-rustworkx">source</a>
+      </p>
+    </footer>
+  </body>
+</html>

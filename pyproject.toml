@@ -36,8 +36,8 @@ name = "Ville Vesilehto"
 email = "ville@vesilehto.fi"
 
 [project.urls]
-Homepage = "https://github.com/thevilledev/nx-rustworkx"
-Documentation = "https://github.com/thevilledev/nx-rustworkx#readme"
+Homepage = "https://ville.dev/nx-rustworkx/"
+Documentation = "https://ville.dev/nx-rustworkx/"
 "Bug Tracker" = "https://github.com/thevilledev/nx-rustworkx/issues"
 "Source Code" = "https://github.com/thevilledev/nx-rustworkx"
 "Release Notes" = "https://github.com/thevilledev/nx-rustworkx/releases"

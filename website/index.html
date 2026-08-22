@@ -1,0 +1,130 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta
+      name="description"
+      content="nx-rustworkx is a NetworkX 3.x backend that accelerates selected graph algorithms with rustworkx."
+    >
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="nx-rustworkx">
+    <meta
+      property="og:description"
+      content="Keep the NetworkX API. Run selected graph algorithms through rustworkx."
+    >
+    <meta property="og:url" content="https://ville.dev/nx-rustworkx/">
+    <meta property="og:image" content="https://ville.dev/nx-rustworkx/og.png">
+    <meta property="og:image:width" content="1200">
+    <meta property="og:image:height" content="630">
+    <meta property="og:image:alt" content="nx-rustworkx — A rustworkx backend for NetworkX">
+    <meta name="twitter:card" content="summary_large_image">
+    <meta name="twitter:title" content="nx-rustworkx">
+    <meta name="twitter:description" content="Keep the NetworkX API. Run selected graph algorithms through rustworkx.">
+    <meta name="twitter:image" content="https://ville.dev/nx-rustworkx/og.png">
+    <meta name="twitter:image:alt" content="nx-rustworkx — A rustworkx backend for NetworkX">
+    <link rel="canonical" href="https://ville.dev/nx-rustworkx/">
+    <link rel="stylesheet" href="styles.css">
+    <title>nx-rustworkx: a rustworkx backend for NetworkX</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <nav class="top" aria-label="Primary navigation">
+      [ overview |
+      <a href="usage.html">usage</a> |
+      <a href="algorithms.html">algorithms</a> |
+      <a href="benchmarks.html">benchmarks</a> |
+      <a href="development.html">development</a> |
+      <a href="https://github.com/thevilledev/nx-rustworkx">source</a> ]
+    </nav>
+
+    <main id="content">
+      <pre class="plain banner" aria-hidden="true">
+ NetworkX graph          rustworkx kernel
+      G     -- dispatch --&gt;     rx
+ result   &lt;--- remap ----   node indices</pre>
+      <h1>nx-rustworkx</h1>
+
+      <p>
+        A <a href="https://networkx.org/">NetworkX</a> 3.x backend that runs
+        selected graph algorithms through
+        <a href="https://www.rustworkx.org/">rustworkx</a>. Keep
+        <code>import networkx as nx</code>, keep your original node IDs, and let
+        NetworkX dispatch the work.
+      </p>
+
+      <ul>
+        <li>93 NetworkX algorithms are implemented.</li>
+        <li>Measured cutoffs avoid dispatch when conversion would cost more than it saves.</li>
+        <li>Unsupported calls stay on NetworkX when the input is an <code>nx.Graph</code>.</li>
+        <li>A rustworkx-backed graph object avoids repeated conversion for supported workloads.</li>
+      </ul>
+
+      <div class="notice">
+        <p>
+          <strong>Beta.</strong> Version 0.1.0 covers simple graphs and digraphs.
+          It does not support multigraphs, drawing, or I/O.
+        </p>
+      </div>
+
+      <table>
+        <caption>Current state</caption>
+        <tbody>
+          <tr><th scope="row">Release</th><td>0.1.0</td></tr>
+          <tr><th scope="row">Python</th><td>3.10 or newer</td></tr>
+          <tr><th scope="row">NetworkX</th><td>3.4 or newer</td></tr>
+          <tr><th scope="row">Supported algorithms</th><td>93</td></tr>
+          <tr><th scope="row">License</th><td>BSD-3-Clause</td></tr>
+        </tbody>
+      </table>
+
+      <h2 id="quick-start">Quick start</h2>
+
+      <pre><code>pip install nx-rustworkx</code></pre>
+
+      <p>Set rustworkx as a preferred backend:</p>
+
+      <pre><code>NETWORKX_BACKEND_PRIORITY=rustworkx python your_script.py</code></pre>
+
+      <p>Or configure it after importing NetworkX:</p>
+
+      <pre><code>import networkx as nx
+
+G = nx.erdos_renyi_graph(2_000, 0.01, seed=1)
+nx.config.backend_priority = ["rustworkx"]
+
+scores = nx.betweenness_centrality(G)</code></pre>
+
+      <p>
+        NetworkX sees a normal <code>nx.Graph</code>. For large enough supported
+        calls, nx-rustworkx converts it, runs the rustworkx kernel, and remaps
+        the answer. Small or unsupported calls remain on NetworkX.
+      </p>
+
+      <h2 id="choose-a-mode">Choose a mode</h2>
+
+      <dl>
+        <dt><strong>Automatic dispatch</strong></dt>
+        <dd>Best default. NetworkX asks the backend whether each call is worth running.</dd>
+        <dt><strong>Explicit backend</strong></dt>
+        <dd>Use <code>backend="rustworkx"</code> on one call to try the kernel directly.</dd>
+        <dt><strong>Native backend graph</strong></dt>
+        <dd>Build a <code>RustworkxGraph</code> once when repeated conversion is the bottleneck.</dd>
+      </dl>
+
+      <p>
+        Continue with <a href="usage.html">usage and configuration</a>, or see
+        the full <a href="algorithms.html">algorithm list and caveats</a>.
+      </p>
+    </main>
+
+    <footer>
+      <p>
+        <a href="https://github.com/thevilledev/nx-rustworkx">github.com/thevilledev/nx-rustworkx</a>
+        &middot; <a href="https://pypi.org/project/nx-rustworkx/">PyPI</a>
+        &middot; <a href="https://github.com/thevilledev/nx-rustworkx/issues">issues</a>
+      </p>
+    </footer>
+  </body>
+</html>

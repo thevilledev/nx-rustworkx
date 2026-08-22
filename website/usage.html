@@ -1,0 +1,163 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <meta name="description" content="Install, configure, and use the nx-rustworkx backend with NetworkX.">
+    <meta name="theme-color" content="#ffffff">
+    <meta property="og:type" content="website">
+    <meta property="og:title" content="Using nx-rustworkx">
+    <meta property="og:description" content="Automatic dispatch, explicit calls, native backend graphs, and fallback.">
+    <meta property="og:url" content="https://ville.dev/nx-rustworkx/usage.html">
+    <meta name="twitter:card" content="summary">
+    <meta name="twitter:title" content="Using nx-rustworkx">
+    <meta name="twitter:description" content="Automatic dispatch, explicit calls, native backend graphs, and fallback.">
+    <link rel="canonical" href="https://ville.dev/nx-rustworkx/usage.html">
+    <link rel="stylesheet" href="styles.css">
+    <title>Using nx-rustworkx</title>
+  </head>
+  <body>
+    <a class="skip-link" href="#content">Skip to content</a>
+    <nav class="top" aria-label="Primary navigation">
+      [ <a href="index.html">overview</a> |
+      usage |
+      <a href="algorithms.html">algorithms</a> |
+      <a href="benchmarks.html">benchmarks</a> |
+      <a href="development.html">development</a> |
+      <a href="https://github.com/thevilledev/nx-rustworkx">source</a> ]
+    </nav>
+
+    <main id="content">
+      <h1>Usage</h1>
+
+      <p>
+        nx-rustworkx plugs into NetworkX's backend dispatcher. Most users keep
+        ordinary NetworkX graphs and enable automatic dispatch. Build a backend
+        graph directly only when the same graph feeds many supported calls.
+      </p>
+
+      <h2 id="install">Install</h2>
+
+      <pre><code>pip install nx-rustworkx</code></pre>
+
+      <p>Or, with uv:</p>
+
+      <pre><code>uv add nx-rustworkx</code></pre>
+
+      <p>
+        Python 3.10+, NetworkX 3.4+, and a published rustworkx wheel are
+        required. The package does not compile custom Rust.
+      </p>
+
+      <h2 id="automatic">Automatic dispatch</h2>
+
+      <p>Set the preferred backend before starting Python:</p>
+
+      <pre><code>NETWORKX_BACKEND_PRIORITY=rustworkx python your_script.py</code></pre>
+
+      <p>Or configure the running process:</p>
+
+      <pre><code>import networkx as nx
+
+nx.config.backend_priority = ["rustworkx"]
+
+G = nx.gnp_random_graph(2_000, 0.01, seed=1)
+scores = nx.betweenness_centrality(G)</code></pre>
+
+      <p>
+        The backend's <code>should_run</code> hook normally declines graphs with
+        fewer than 200 nodes or 400 edges. It also declines functions whose
+        measured conversion cost outweighs the rustworkx kernel.
+      </p>
+
+      <pre><code>nx.config.backends.rustworkx.min_nodes = 200
+nx.config.backends.rustworkx.min_edges = 400</code></pre>
+
+      <table>
+        <caption>Dispatch behavior</caption>
+        <thead>
+          <tr><th scope="col">Call</th><th scope="col">What happens</th></tr>
+        </thead>
+        <tbody>
+          <tr>
+            <td>Supported and large enough</td>
+            <td>Convert, run rustworkx, remap the result.</td>
+          </tr>
+          <tr>
+            <td>Supported but not worth converting</td>
+            <td>Stay on NetworkX.</td>
+          </tr>
+          <tr>
+            <td>Unsupported on an <code>nx.Graph</code></td>
+            <td>Stay on NetworkX.</td>
+          </tr>
+          <tr>
+            <td><code>backend="rustworkx"</code></td>
+            <td>Try the backend regardless of its performance cutoff.</td>
+          </tr>
+        </tbody>
+      </table>
+
+      <h2 id="explicit">Select one call explicitly</h2>
+
+      <pre><code>lengths = nx.single_source_dijkstra_path_length(
+    G,
+    source="helsinki",
+    backend="rustworkx",
+)</code></pre>
+
+      <p>
+        Explicit selection bypasses performance policy, not compatibility.
+        Arguments the implementation cannot honor still raise rather than
+        silently returning a different answer.
+      </p>
+
+      <h2 id="native-graph">Skip repeated conversion</h2>
+
+      <p>
+        NetworkX 3.6+ can construct the backend graph directly. Constructors
+        such as <code>empty_graph</code> and <code>from_edgelist</code> work on
+        every supported NetworkX version.
+      </p>
+
+      <pre><code>import networkx as nx
+
+G = nx.Graph([(0, 1), (1, 2), (2, 0)], backend="rustworkx")
+scores = nx.betweenness_centrality(G)</code></pre>
+
+      <p>
+        <code>RustworkxGraph</code> supports common construction calls, node and
+        edge attributes, and the <code>nodes</code>, <code>edges</code>,
+        <code>adj</code>, and <code>degree</code> views. It is not a complete
+        <code>nx.Graph</code> replacement: there is no drawing, I/O, or multigraph.
+      </p>
+
+      <h2 id="fallback">Fallback from a backend graph</h2>
+
+      <p>
+        An unsupported algorithm cannot run directly on a backend graph. Turn
+        on fallback if NetworkX should convert it back to an <code>nx.Graph</code>:
+      </p>
+
+      <pre><code>nx.config.fallback_to_nx = True
+triangles = nx.triangles(G)</code></pre>
+
+      <p>Or set it for the whole process:</p>
+
+      <pre><code>NETWORKX_FALLBACK_TO_NX=true python your_script.py</code></pre>
+
+      <p>
+        Without fallback, prefer an ordinary <code>nx.Graph</code> plus backend
+        priority so unsupported functions naturally remain on NetworkX.
+      </p>
+    </main>
+
+    <footer>
+      <p>
+        <a href="index.html">overview</a> &middot;
+        <a href="algorithms.html">algorithm reference</a> &middot;
+        <a href="https://github.com/thevilledev/nx-rustworkx/issues">issues</a>
+      </p>
+    </footer>
+  </body>
+</html>
