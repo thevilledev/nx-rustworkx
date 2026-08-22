@@ -58,4 +58,7 @@ _MODULES = (
 
 ALGORITHMS = sorted({name for module in _MODULES for name in module.__all__})
 
-__all__ = ALGORITHMS + ["ALGORITHMS"]
+__all__ = [
+    "ALGORITHMS",
+    *ALGORITHMS,
+]

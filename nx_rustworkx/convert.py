@@ -40,12 +40,15 @@ def convert_from_nx(
 
     keep_all_edges = bool(preserve_all_attrs or preserve_edge_attrs)
     if keep_all_edges:
+
         def _payload(data):
             return dict(data)
     elif edge_attrs:
+
         def _payload(data):
             return {key: data.get(key, default) for key, default in edge_attrs.items()}
     else:
+
         def _payload(_data):
             return None
 

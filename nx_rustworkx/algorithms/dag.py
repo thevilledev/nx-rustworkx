@@ -15,6 +15,7 @@ from nx_rustworkx.algorithms._utils import (
     remap_nodes,
     require_directed,
 )
+
 __all__ = [
     "is_directed_acyclic_graph",
     "topological_sort",
@@ -87,7 +88,9 @@ def _reachability(G, source, kind):
         raise nx.NetworkXError(f"The node {source} is not in the graph.")
     index = rwg.node_to_index[source]
     directed = as_directed_rx(rwg)
-    found = rx.ancestors(directed, index) if kind == "ancestors" else rx.descendants(directed, index)
+    found = (
+        rx.ancestors(directed, index) if kind == "ancestors" else rx.descendants(directed, index)
+    )
     index_to_node = rwg.index_to_node
     return {index_to_node[i] for i in found}
 
@@ -143,9 +146,7 @@ def _dag_weight_fn(weight, default_weight):
     return _fn
 
 
-def _can_run_dag_longest_path(
-    G, weight="weight", default_weight=1, topo_order=None, **kwargs
-):
+def _can_run_dag_longest_path(G, weight="weight", default_weight=1, topo_order=None, **kwargs):
     reason = default_can_run(G, weight=weight)
     if reason is not True:
         return reason
@@ -162,9 +163,7 @@ def dag_longest_path(G, weight="weight", default_weight=1, topo_order=None):
     rwg = as_rw_graph(G)
     require_directed(rwg)
     try:
-        path = rx.dag_weighted_longest_path(
-            rwg.rx_graph, _dag_weight_fn(weight, default_weight)
-        )
+        path = rx.dag_weighted_longest_path(rwg.rx_graph, _dag_weight_fn(weight, default_weight))
     except rx.DAGHasCycle as exc:
         _raise_if_cyclic(exc)
     return remap_nodes(rwg, path)
@@ -201,9 +200,7 @@ def transitive_reduction(G):
         index_to_node[new_index] = rwg.index_to_node[old_index]
     out = nx.DiGraph()
     out.add_nodes_from(rwg.index_to_node)
-    out.add_edges_from(
-        (index_to_node[u], index_to_node[v]) for u, v in reduced.edge_list()
-    )
+    out.add_edges_from((index_to_node[u], index_to_node[v]) for u, v in reduced.edge_list())
     return out
 
 

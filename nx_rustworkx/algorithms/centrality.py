@@ -20,8 +20,8 @@ from nx_rustworkx.algorithms._utils import (
 
 __all__ = [
     "betweenness_centrality",
-    "edge_betweenness_centrality",
     "closeness_centrality",
+    "edge_betweenness_centrality",
     "eigenvector_centrality",
     "degree_centrality",
     "in_degree_centrality",
@@ -197,9 +197,7 @@ def eigenvector_centrality(
     _ = nstart, kwargs
     rwg = as_rw_graph(G)
     if rwg.number_of_nodes() == 0:
-        raise nx.NetworkXPointlessConcept(
-            "cannot compute centrality for the null graph"
-        )
+        raise nx.NetworkXPointlessConcept("cannot compute centrality for the null graph")
     try:
         scores = rx.eigenvector_centrality(
             rwg.rx_graph,
@@ -372,9 +370,7 @@ def hits(G, max_iter=100, tol=1.0e-8, nstart=None, normalized=True):
         return {}, {}
     remapped_nstart = None
     if nstart is not None:
-        remapped_nstart = {
-            rwg.node_to_index[node]: float(value) for node, value in nstart.items()
-        }
+        remapped_nstart = {rwg.node_to_index[node]: float(value) for node, value in nstart.items()}
     try:
         hubs, authorities = rx.hits(
             as_directed_rx(rwg),
@@ -465,9 +461,7 @@ def group_closeness_centrality(G, S, weight=None):
     """Group closeness centrality via rustworkx. Unweighted only."""
     _ = weight
     rwg = as_rw_graph(G)
-    return float(
-        rx.group_closeness_centrality(rwg.rx_graph, require_nodes(rwg, S, kind="S node"))
-    )
+    return float(rx.group_closeness_centrality(rwg.rx_graph, require_nodes(rwg, S, kind="S node")))
 
 
 group_closeness_centrality.can_run = _can_run_group_closeness
@@ -476,9 +470,7 @@ group_closeness_centrality.can_run = _can_run_group_closeness
 def group_degree_centrality(G, S):
     """Group degree centrality via rustworkx."""
     rwg = as_rw_graph(G)
-    return float(
-        rx.group_degree_centrality(rwg.rx_graph, require_nodes(rwg, S, kind="S node"))
-    )
+    return float(rx.group_degree_centrality(rwg.rx_graph, require_nodes(rwg, S, kind="S node")))
 
 
 group_degree_centrality.can_run = _can_run_degree

@@ -259,6 +259,24 @@ call through this backend and compares against NetworkX:
 NETWORKX_TEST_BACKEND=rustworkx pytest --pyargs networkx.algorithms
 ```
 
+With [uv](https://docs.astral.sh/uv/):
+
+```bash
+uv sync --extra test
+uv run pytest tests
+```
+
+## Lint
+
+Dev tools live in the `dev` dependency group: [zizmor](https://docs.zizmor.sh/) for GitHub Actions, [pyright](https://github.com/microsoft/pyright) for types, and [pyruff](https://github.com/emilt27/pyruff) for lint and format. pyruff needs Python 3.11+.
+
+```bash
+uv sync
+uv run zizmor .
+uv run pyright
+uv run python scripts/pyruff_check.py
+```
+
 ## Layout
 
 ```text

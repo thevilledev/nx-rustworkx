@@ -15,10 +15,7 @@ class _AdjView:
         return node in self._graph.node_to_index
 
     def __getitem__(self, node: Any) -> dict:
-        return {
-            nbr: data
-            for nbr, data in self._graph._neighbor_items(node)
-        }
+        return {nbr: data for nbr, data in self._graph._neighbor_items(node)}
 
     def __iter__(self):
         return iter(self._graph.node_to_index)
@@ -202,9 +199,7 @@ class _DegreeView:
 
     def __call__(self, nbunch=None, weight=None):
         if weight is not None:
-            raise NotImplementedError(
-                "nx-rustworkx does not implement weighted degree"
-            )
+            raise NotImplementedError("nx-rustworkx does not implement weighted degree")
         if nbunch is None:
             return self
         if self._graph.has_node(nbunch):
@@ -369,9 +364,7 @@ class RustworkxGraph:
 
     def has_edge(self, u, v) -> bool:
         try:
-            return bool(
-                self.rx_graph.has_edge(self.node_to_index[u], self.node_to_index[v])
-            )
+            return bool(self.rx_graph.has_edge(self.node_to_index[u], self.node_to_index[v]))
         except KeyError:
             return False
 
