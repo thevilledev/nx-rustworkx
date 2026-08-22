@@ -121,13 +121,10 @@ def test_shortest_path_declines_where_networkx_wins():
     G = nx.gnp_random_graph(400, 0.05, seed=0)
     # A single pair goes to NetworkX's bidirectional search.
     assert (
-        BackendInterface.should_run("shortest_path", (G,), {"source": 0, "target": 9})
-        is not True
+        BackendInterface.should_run("shortest_path", (G,), {"source": 0, "target": 9}) is not True
     )
     assert (
-        BackendInterface.should_run(
-            "shortest_path_length", (G,), {"source": 0, "target": 9}
-        )
+        BackendInterface.should_run("shortest_path_length", (G,), {"source": 0, "target": 9})
         is not True
     )
     # Unweighted paths are cheaper to build in NetworkX than to remap.

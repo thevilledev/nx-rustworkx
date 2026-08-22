@@ -83,8 +83,15 @@ def main(argv=None) -> int:
         rows.append(bench_one(n, p, args.seed, args.loops, run_nx))
 
     print()
-    print("| n | m | convert (s) | kernel (s) | rustworkx total (s) | NetworkX (s) | speedup | convert share |")
-    print("|---|---|-------------|------------|---------------------|--------------|---------|---------------|")
+    header = (
+        "| n | m | convert (s) | kernel (s) | rustworkx total (s) "
+        "| NetworkX (s) | speedup | convert share |"
+    )
+    print(header)
+    print(
+        "|---|---|-------------|------------|---------------------|"
+        "--------------|---------|---------------|"
+    )
     for row in rows:
         print(
             f"| {row['n']} | {row['m']} | {_fmt(row['convert_s'])} | "

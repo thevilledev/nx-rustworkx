@@ -38,9 +38,7 @@ def _graphs(n: int, seed: int) -> dict:
         directed[u][v]["weight"] = 1 + ((u * 5 + v * 3) % 7)
     dag = nx.DiGraph()
     dag.add_nodes_from(range(n))
-    dag.add_edges_from(
-        (u, v) for u in range(n) for v in range(u + 1, min(n, u + 6)) if (u + v) % 3
-    )
+    dag.add_edges_from((u, v) for u in range(n) for v in range(u + 1, min(n, u + 6)) if (u + v) % 3)
     return {"undirected": undirected, "directed": directed, "dag": dag, "small": small}
 
 
@@ -51,32 +49,65 @@ def _calls(graphs, n):
     single = {
         # graph-only calls, grouped by the graph they need
         "undirected": [
-            "betweenness_centrality", "edge_betweenness_centrality", "closeness_centrality",
-            "eigenvector_centrality", "degree_centrality",
-            "hits", "pagerank", "is_connected",
-            "connected_components", "number_connected_components", "articulation_points",
-            "bridges", "biconnected_components", "cycle_basis", "core_number",
-            "is_bipartite", "isolates", "number_of_isolates", "transitivity",
-            "greedy_color", "minimum_spanning_tree", "minimum_spanning_edges",
-            "complement", "max_weight_matching", "negative_edge_cycle",
+            "betweenness_centrality",
+            "edge_betweenness_centrality",
+            "closeness_centrality",
+            "eigenvector_centrality",
+            "degree_centrality",
+            "hits",
+            "pagerank",
+            "is_connected",
+            "connected_components",
+            "number_connected_components",
+            "articulation_points",
+            "bridges",
+            "biconnected_components",
+            "cycle_basis",
+            "core_number",
+            "is_bipartite",
+            "isolates",
+            "number_of_isolates",
+            "transitivity",
+            "greedy_color",
+            "minimum_spanning_tree",
+            "minimum_spanning_edges",
+            "complement",
+            "max_weight_matching",
+            "negative_edge_cycle",
         ],
         "small": [
-            "floyd_warshall", "floyd_warshall_numpy",
-            "floyd_warshall_predecessor_and_distance", "all_pairs_dijkstra",
-            "all_pairs_dijkstra_path", "all_pairs_dijkstra_path_length",
-            "all_pairs_bellman_ford_path", "all_pairs_bellman_ford_path_length",
-            "all_pairs_shortest_path", "all_pairs_shortest_path_length",
-            "shortest_path", "shortest_path_length",
+            "floyd_warshall",
+            "floyd_warshall_numpy",
+            "floyd_warshall_predecessor_and_distance",
+            "all_pairs_dijkstra",
+            "all_pairs_dijkstra_path",
+            "all_pairs_dijkstra_path_length",
+            "all_pairs_bellman_ford_path",
+            "all_pairs_bellman_ford_path_length",
+            "all_pairs_shortest_path",
+            "all_pairs_shortest_path_length",
+            "shortest_path",
+            "shortest_path_length",
         ],
         "directed": [
-            "in_degree_centrality", "out_degree_centrality", "is_weakly_connected",
-            "weakly_connected_components", "number_weakly_connected_components",
-            "strongly_connected_components", "number_strongly_connected_components",
-            "is_strongly_connected", "is_semiconnected", "condensation",
+            "in_degree_centrality",
+            "out_degree_centrality",
+            "is_weakly_connected",
+            "weakly_connected_components",
+            "number_weakly_connected_components",
+            "strongly_connected_components",
+            "number_strongly_connected_components",
+            "is_strongly_connected",
+            "is_semiconnected",
+            "condensation",
         ],
         "dag": [
-            "is_directed_acyclic_graph", "topological_sort", "topological_generations",
-            "dag_longest_path", "dag_longest_path_length", "transitive_reduction",
+            "is_directed_acyclic_graph",
+            "topological_sort",
+            "topological_generations",
+            "dag_longest_path",
+            "dag_longest_path_length",
+            "transitive_reduction",
         ],
     }
     graph_for = {"undirected": U, "directed": D, "dag": A, "small": graphs["small"]}
@@ -87,10 +118,14 @@ def _calls(graphs, n):
 
     src, tgt = 0, n - 1
     for name in (
-        "single_source_dijkstra", "single_source_dijkstra_path",
-        "single_source_dijkstra_path_length", "single_source_bellman_ford",
-        "single_source_bellman_ford_path", "single_source_bellman_ford_path_length",
-        "single_source_shortest_path", "single_source_shortest_path_length",
+        "single_source_dijkstra",
+        "single_source_dijkstra_path",
+        "single_source_dijkstra_path_length",
+        "single_source_bellman_ford",
+        "single_source_bellman_ford_path",
+        "single_source_bellman_ford_path_length",
+        "single_source_shortest_path",
+        "single_source_shortest_path_length",
     ):
         yield name, U, (src,), {}
     for name in ("single_target_shortest_path", "single_target_shortest_path_length"):
@@ -114,9 +149,12 @@ def _calls(graphs, n):
     yield "bellman_ford_path_length", U, (src, tgt), {}
     yield "astar_path", U, (src, tgt), {}
     yield "astar_path_length", U, (src, tgt), {}
-    yield "find_negative_cycle", nx.DiGraph(
-        [(0, 1, {"weight": 1}), (1, 2, {"weight": -3}), (2, 0, {"weight": 1})]
-    ), (0,), {}
+    yield (
+        "find_negative_cycle",
+        nx.DiGraph([(0, 1, {"weight": 1}), (1, 2, {"weight": -3}), (2, 0, {"weight": 1})]),
+        (0,),
+        {},
+    )
     # Katz needs alpha below 1 / lambda_max, which shrinks as the graph grows.
     alpha = 0.5 / max(dict(U.degree()).values())
     yield "katz_centrality", U, (alpha,), {}
@@ -124,9 +162,12 @@ def _calls(graphs, n):
     yield "descendants_at_distance", A, (src, 2), {}
     yield "immediate_dominators", A, (src,), {}
     yield "dfs_edges", U, (src,), {}
-    yield "average_shortest_path_length", nx.connected_watts_strogatz_graph(
-        min(n, 400), 4, 0.3, seed=1
-    ), (), {}
+    yield (
+        "average_shortest_path_length",
+        nx.connected_watts_strogatz_graph(min(n, 400), 4, 0.3, seed=1),
+        (),
+        {},
+    )
     # stoer_wagner needs a connected, non-negatively weighted graph.
     connected = nx.connected_watts_strogatz_graph(min(n, 300), 4, 0.3, seed=1)
     for u, v in connected.edges():
@@ -173,9 +214,7 @@ def main() -> int:
             continue
         print(f"  timing {name} ...", file=sys.stderr, flush=True)
         try:
-            backend = _time(
-                lambda: _consume(func(G, *extra, backend="rustworkx", **kwargs))
-            )
+            backend = _time(lambda: _consume(func(G, *extra, backend="rustworkx", **kwargs)))
             reference = _time(lambda: _consume(func.orig_func(G, *extra, **kwargs)))
         except Exception as exc:  # noqa: BLE001 - report, do not stop the sweep
             rows.append((name, None, None, f"{type(exc).__name__}: {exc}", False))
@@ -192,10 +231,7 @@ def main() -> int:
     print(f"{'function':<42}{'rustworkx':>12}{'networkx':>12}{'speedup':>10}  auto")
     for name, backend, reference, _, auto in timed:
         mark = "yes" if auto else "no"
-        print(
-            f"{name:<42}{backend:>12.5f}{reference:>12.5f}"
-            f"{reference / backend:>9.1f}x  {mark}"
-        )
+        print(f"{name:<42}{backend:>12.5f}{reference:>12.5f}{reference / backend:>9.1f}x  {mark}")
 
     slower = [r for r in timed if r[2] / r[1] < 1.0]
     # Only a material, repeatable loss is worth changing the dispatch policy for;

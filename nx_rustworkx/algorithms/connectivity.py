@@ -18,30 +18,28 @@ from nx_rustworkx.algorithms._utils import (
 )
 
 __all__ = [
-    "is_connected",
-    "is_weakly_connected",
-    "connected_components",
-    "weakly_connected_components",
-    "number_connected_components",
-    "number_weakly_connected_components",
-    "strongly_connected_components",
-    "number_strongly_connected_components",
-    "is_strongly_connected",
-    "is_semiconnected",
-    "node_connected_component",
     "articulation_points",
-    "bridges",
     "biconnected_components",
+    "bridges",
     "condensation",
+    "connected_components",
+    "is_connected",
+    "is_semiconnected",
+    "is_strongly_connected",
+    "is_weakly_connected",
+    "node_connected_component",
+    "number_connected_components",
+    "number_strongly_connected_components",
+    "number_weakly_connected_components",
     "stoer_wagner",
+    "strongly_connected_components",
+    "weakly_connected_components",
 ]
 
 
 def _null_graph_guard(rwg):
     if rwg.number_of_nodes() == 0:
-        raise nx.NetworkXPointlessConcept(
-            "Connectivity is undefined for the null graph."
-        )
+        raise nx.NetworkXPointlessConcept("Connectivity is undefined for the null graph.")
 
 
 def is_connected(G):
@@ -53,9 +51,7 @@ def is_connected(G):
     try:
         return bool(rx.is_connected(rwg.rx_graph))
     except rx.NullGraph as exc:
-        raise nx.NetworkXPointlessConcept(
-            "Connectivity is undefined for the null graph."
-        ) from exc
+        raise nx.NetworkXPointlessConcept("Connectivity is undefined for the null graph.") from exc
 
 
 is_connected.can_run = can_run_undirected
@@ -70,9 +66,7 @@ def is_weakly_connected(G):
     try:
         return bool(rx.is_weakly_connected(rwg.rx_graph))
     except rx.NullGraph as exc:
-        raise nx.NetworkXPointlessConcept(
-            "Connectivity is undefined for the null graph."
-        ) from exc
+        raise nx.NetworkXPointlessConcept("Connectivity is undefined for the null graph.") from exc
 
 
 is_weakly_connected.can_run = can_run_directed
@@ -157,9 +151,7 @@ def is_semiconnected(G):
     rwg = as_rw_graph(G)
     require_directed(rwg)
     if rwg.number_of_nodes() == 0:
-        raise nx.NetworkXPointlessConcept(
-            "Connectivity is undefined for the null graph."
-        )
+        raise nx.NetworkXPointlessConcept("Connectivity is undefined for the null graph.")
     return bool(rx.is_semi_connected(rwg.rx_graph))
 
 

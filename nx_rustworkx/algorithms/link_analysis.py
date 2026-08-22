@@ -37,9 +37,7 @@ def pagerank(
     if rwg.number_of_nodes() == 0:
         return {}
     if personalization is not None and sum(personalization.values()) == 0:
-        raise ZeroDivisionError(
-            "The sum of the personalization values must not be zero."
-        )
+        raise ZeroDivisionError("The sum of the personalization values must not be zero.")
     try:
         scores = rx.pagerank(
             as_directed_rx(rwg),

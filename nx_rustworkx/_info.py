@@ -158,8 +158,7 @@ _FUNCTIONS = {
         "``ignore_nan`` falls back to NetworkX.",
     ],
     "minimum_spanning_edges": [
-        "Undirected graphs only; same tie-breaking note as "
-        "``minimum_spanning_tree``.",
+        "Undirected graphs only; same tie-breaking note as ``minimum_spanning_tree``.",
         "``ignore_nan`` falls back to NetworkX.",
     ],
     "steiner_tree": [
@@ -180,9 +179,7 @@ _FUNCTIONS = {
 #: name -> additional_docs for the graph constructors, which build a rustworkx
 #: graph directly instead of converting one.
 _GENERATORS = {
-    "graph__new__": (
-        "Returns a rustworkx-backed graph so later algorithm calls skip conversion."
-    ),
+    "graph__new__": ("Returns a rustworkx-backed graph so later algorithm calls skip conversion."),
     "digraph__new__": (
         "Returns a rustworkx-backed digraph so later algorithm calls skip conversion."
     ),
@@ -200,9 +197,7 @@ def _docs(notes):
 def get_info():
     """Return backend metadata used by NetworkX's documentation box."""
     functions = {name: {"additional_docs": _docs(notes)} for name, notes in _FUNCTIONS.items()}
-    functions.update(
-        {name: {"additional_docs": docs} for name, docs in _GENERATORS.items()}
-    )
+    functions.update({name: {"additional_docs": docs} for name, docs in _GENERATORS.items()})
     return {
         "backend_name": "rustworkx",
         "project": "nx-rustworkx",

@@ -84,11 +84,7 @@ def test_info_documents_every_implemented_function():
 def test_info_functions_are_dispatchable_in_networkx():
     from nx_rustworkx.algorithms import ALGORITHMS
 
-    missing = [
-        name
-        for name in ALGORITHMS
-        if name not in nx.utils.backends._registered_algorithms
-    ]
+    missing = [name for name in ALGORITHMS if name not in nx.utils.backends._registered_algorithms]
     assert missing == []
 
 
@@ -105,6 +101,4 @@ def test_compat_probes_match_installed_networkx():
     with warnings.catch_warnings():
         warnings.simplefilter("ignore", FutureWarning)
         reference = nx.single_target_shortest_path_length.orig_func(G, 1)
-    assert _compat.single_target_shortest_path_length_returns_dict() == isinstance(
-        reference, dict
-    )
+    assert _compat.single_target_shortest_path_length_returns_dict() == isinstance(reference, dict)

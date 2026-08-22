@@ -25,40 +25,40 @@ from nx_rustworkx.algorithms._utils import (
 )
 
 __all__ = [
+    "all_pairs_bellman_ford_path",
+    "all_pairs_bellman_ford_path_length",
+    "all_pairs_dijkstra",
+    "all_pairs_dijkstra_path",
+    "all_pairs_dijkstra_path_length",
+    "all_pairs_shortest_path",
+    "all_pairs_shortest_path_length",
+    "all_shortest_paths",
+    "astar_path",
+    "astar_path_length",
+    "average_shortest_path_length",
+    "bellman_ford_path",
+    "bellman_ford_path_length",
+    "bidirectional_shortest_path",
+    "dijkstra_path",
+    "dijkstra_path_length",
+    "find_negative_cycle",
+    "floyd_warshall",
+    "floyd_warshall_numpy",
+    "floyd_warshall_predecessor_and_distance",
+    "has_path",
+    "negative_edge_cycle",
     "shortest_path",
     "shortest_path_length",
-    "single_source_dijkstra",
-    "single_source_dijkstra_path",
-    "single_source_dijkstra_path_length",
     "single_source_bellman_ford",
     "single_source_bellman_ford_path",
     "single_source_bellman_ford_path_length",
+    "single_source_dijkstra",
+    "single_source_dijkstra_path",
+    "single_source_dijkstra_path_length",
     "single_source_shortest_path",
     "single_source_shortest_path_length",
     "single_target_shortest_path",
     "single_target_shortest_path_length",
-    "bidirectional_shortest_path",
-    "all_pairs_dijkstra",
-    "all_pairs_dijkstra_path",
-    "all_pairs_dijkstra_path_length",
-    "all_pairs_bellman_ford_path",
-    "all_pairs_bellman_ford_path_length",
-    "all_pairs_shortest_path",
-    "all_pairs_shortest_path_length",
-    "all_shortest_paths",
-    "dijkstra_path",
-    "dijkstra_path_length",
-    "bellman_ford_path",
-    "bellman_ford_path_length",
-    "astar_path",
-    "astar_path_length",
-    "has_path",
-    "floyd_warshall",
-    "floyd_warshall_numpy",
-    "floyd_warshall_predecessor_and_distance",
-    "negative_edge_cycle",
-    "find_negative_cycle",
-    "average_shortest_path_length",
 ]
 
 
@@ -190,10 +190,7 @@ def _lengths_toward_target(rwg, target, weight, method):
 
 def shortest_path(G, source=None, target=None, weight=None, method="dijkstra"):
     """Shortest paths via rustworkx Dijkstra or Bellman-Ford."""
-    if weight is None:
-        method = "dijkstra"
-    else:
-        method = _validate_method(method)
+    method = "dijkstra" if weight is None else _validate_method(method)
     rwg = as_rw_graph(G)
 
     if source is not None and target is not None:
@@ -218,6 +215,7 @@ def shortest_path(G, source=None, target=None, weight=None, method="dijkstra"):
         return _paths_toward_target(rwg, target, weight, method)
 
     raw = _all_pairs_paths(rwg.rx_graph, weight, method)
+
     def _iter():
         for src_idx, targets in raw.items():
             src = rwg.index_to_node[src_idx]
@@ -255,10 +253,7 @@ shortest_path.should_run = _should_run_shortest_path
 
 def shortest_path_length(G, source=None, target=None, weight=None, method="dijkstra"):
     """Shortest path lengths via rustworkx Dijkstra or Bellman-Ford."""
-    if weight is None:
-        method = "dijkstra"
-    else:
-        method = _validate_method(method)
+    method = "dijkstra" if weight is None else _validate_method(method)
     rwg = as_rw_graph(G)
 
     if source is not None and target is not None:
@@ -283,6 +278,7 @@ def shortest_path_length(G, source=None, target=None, weight=None, method="dijks
         return _lengths_toward_target(rwg, target, weight, method)
 
     raw = _all_pairs_lengths(rwg.rx_graph, weight, method)
+
     def _iter():
         for src_idx, targets in raw.items():
             src = rwg.index_to_node[src_idx]
@@ -716,8 +712,10 @@ def _astar_path(rwg, source, target, heuristic, weight):
     require_node(rwg, target, kind="Target")
     if source == target:
         return [source]
-    estimate = (lambda _payload: 0.0) if heuristic is None else (
-        lambda payload: float(heuristic(payload, target))
+    estimate = (
+        (lambda _payload: 0.0)
+        if heuristic is None
+        else (lambda payload: float(heuristic(payload, target)))
     )
     weight_fn = edge_weight_fn(weight)
     try:
@@ -853,7 +851,9 @@ def negative_edge_cycle(G, weight="weight", heuristic=True):
     rwg = as_rw_graph(G)
     if rwg.number_of_nodes() == 0:
         return False
-    return bool(rx.negative_edge_cycle(as_directed_rx(rwg), lambda data: edge_weight_fn(weight)(data)))
+    return bool(
+        rx.negative_edge_cycle(as_directed_rx(rwg), lambda data: edge_weight_fn(weight)(data))
+    )
 
 
 negative_edge_cycle.can_run = _can_run_weighted

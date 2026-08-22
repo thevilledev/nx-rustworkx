@@ -96,9 +96,7 @@ def test_greedy_color_rejects_other_strategies():
     from nx_rustworkx.interface import BackendInterface
 
     G = nx.path_graph(5)
-    assert (
-        BackendInterface.can_run("greedy_color", (G, "random_sequential"), {}) is not True
-    )
+    assert BackendInterface.can_run("greedy_color", (G, "random_sequential"), {}) is not True
     assert BackendInterface.can_run("greedy_color", (G, "largest_first", True), {}) is not True
 
 

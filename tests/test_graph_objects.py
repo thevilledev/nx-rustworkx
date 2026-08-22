@@ -25,6 +25,7 @@ def rustworkx_graph(data=(), *, directed=False, **attr):
     G.graph.update(attr)
     return G
 
+
 needs_class_dispatch = pytest.mark.skipif(
     not HAS_CLASS_DISPATCH,
     reason="NetworkX < 3.6 has no Graph(backend=) / backend_priority.classes",
@@ -186,7 +187,9 @@ VIEW_CASES = {
     "nodes(data,default)": lambda G: sorted(G.nodes(data="color", default="none")),
     "len(edges)": lambda G: len(G.edges),
     "set(edges)": lambda G: {frozenset(e) for e in G.edges},
-    "edges(data=key)": lambda G: sorted((frozenset((u, v)), w) for u, v, w in G.edges(data="weight")),
+    "edges(data=key)": lambda G: sorted(
+        (frozenset((u, v)), w) for u, v, w in G.edges(data="weight")
+    ),
     "edges(nbunch)": lambda G: {frozenset(e) for e in G.edges(1)},
     "edges(nbunch list)": lambda G: {frozenset(e) for e in G.edges([1, 3])},
     "edge membership": lambda G: ((1, 2) in G.edges, (1, 3) in G.edges),

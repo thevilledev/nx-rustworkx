@@ -37,9 +37,7 @@ def test_weakly_connected_counts():
 def test_is_semiconnected():
     chain = nx.DiGraph([(0, 1), (1, 2), (2, 3)])
     for G in (DIRECTED, chain):
-        assert nx.is_semiconnected(G, backend="rustworkx") == (
-            nx.is_semiconnected.orig_func(G)
-        )
+        assert nx.is_semiconnected(G, backend="rustworkx") == (nx.is_semiconnected.orig_func(G))
 
 
 def test_node_connected_component():
@@ -71,6 +69,7 @@ def test_condensation_matches_structure():
     expected_members = _sorted_sets(data["members"] for _, data in expected.nodes(data=True))
     assert got_members == expected_members
     assert got.number_of_edges() == expected.number_of_edges()
+
     # Edges between condensation nodes must connect the same member sets.
     def edge_member_pairs(C):
         return {
@@ -90,9 +89,7 @@ def test_stoer_wagner_matches():
     assert value == pytest.approx(e_value)
     assert sorted(left + right) == sorted(G)
     assert set(left) & set(right) == set()
-    cut = sum(
-        G[u][v]["weight"] for u, v in G.edges() if (u in set(left)) != (v in set(left))
-    )
+    cut = sum(G[u][v]["weight"] for u, v in G.edges() if (u in set(left)) != (v in set(left)))
     assert cut == pytest.approx(value)
 
 
@@ -122,9 +119,7 @@ def test_cycle_basis_is_a_basis():
 
 
 def test_core_number_matches():
-    assert nx.core_number(UNDIRECTED, backend="rustworkx") == (
-        nx.core_number.orig_func(UNDIRECTED)
-    )
+    assert nx.core_number(UNDIRECTED, backend="rustworkx") == (nx.core_number.orig_func(UNDIRECTED))
 
 
 def test_core_number_rejects_self_loops():

@@ -55,6 +55,17 @@ bench = [
     "pytest>=7.2",
 ]
 
+[dependency-groups]
+dev = [
+    "pyright[nodejs]>=1.1.411",
+    "pyruff>=0.15.1rc5; python_version >= '3.11'",
+    "zizmor>=1.29.0",
+]
+
+[tool.uv]
+# Allow pyruff's current RC pin without taking other pre-releases.
+prerelease = "explicit"
+
 [tool.setuptools.packages.find]
 include = ["nx_rustworkx*"]
 
@@ -63,3 +74,62 @@ testpaths = ["tests"]
 filterwarnings = [
     "ignore::DeprecationWarning",
 ]
+
+[tool.ruff]
+target-version = "py310"
+line-length = 100
+src = ["nx_rustworkx", "tests", "benches", "scripts"]
+
+[tool.ruff.lint]
+select = [
+    "E",
+    "W",
+    "F",
+    "I",
+    "B",
+    "UP",
+    "SIM",
+    "RUF",
+]
+# Main's current tree predates these rules; keep them off until a dedicated cleanup.
+ignore = [
+    "E501",
+    "B018",
+    "B023",
+    "B904",
+    "B905",
+    "SIM102",
+    "SIM105",
+    "UP033",
+    "RUF007",
+    "RUF022",
+    "RUF023",
+    "RUF100",
+]
+
+[tool.ruff.lint.isort]
+known-first-party = ["nx_rustworkx"]
+
+[tool.ruff.lint.per-file-ignores]
+# Re-exports used by BackendInterface via getattr.
+"nx_rustworkx/algorithms/__init__.py" = ["F401"]
+
+[tool.pyright]
+include = ["nx_rustworkx", "tests", "benches", "scripts"]
+pythonVersion = "3.10"
+typeCheckingMode = "basic"
+# NetworkX backends attach can_run to functions; __all__ is populated lazily.
+reportFunctionMemberAccess = false
+reportUnsupportedDunderAll = false
+# NetworkX / rustworkx stubs mark dispatcher helpers as optional.
+reportOptionalCall = false
+reportOptionalMemberAccess = false
+reportOptionalSubscript = false
+reportOperatorIssue = false
+reportAttributeAccessIssue = false
+reportIndexIssue = false
+reportArgumentType = false
+reportAssignmentType = false
+reportGeneralTypeIssues = false
+reportRedeclaration = false
+reportCallIssue = false

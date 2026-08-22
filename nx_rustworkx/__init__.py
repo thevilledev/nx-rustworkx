@@ -11,9 +11,9 @@ __version__ = "0.3.0"
 __all__ = [
     "BackendInterface",
     "RustworkxGraph",
+    "__version__",
     "convert_from_nx",
     "convert_to_nx",
-    "__version__",
 ]
 
 
