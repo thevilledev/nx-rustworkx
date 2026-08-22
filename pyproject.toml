@@ -1,20 +1,20 @@
 [build-system]
-requires = ["setuptools>=61.2"]
+requires = ["setuptools>=77"]
 build-backend = "setuptools.build_meta"
 
 [project]
 name = "nx-rustworkx"
-version = "0.3.0"
+version = "0.1.0"
 description = "A NetworkX backend that dispatches selected algorithms to rustworkx."
 readme = "README.md"
 requires-python = ">=3.10"
-license = {text = "BSD-3-Clause"}
+license = "BSD-3-Clause"
+license-files = ["LICENSE"]
 keywords = ["networkx", "graphs", "algorithms", "rustworkx", "backend"]
 classifiers = [
     "Development Status :: 4 - Beta",
     "Intended Audience :: Developers",
     "Intended Audience :: Science/Research",
-    "License :: OSI Approved :: BSD License",
     "Operating System :: OS Independent",
     "Programming Language :: Python :: 3",
     "Programming Language :: Python :: 3.10",
@@ -37,8 +37,11 @@ email = "ville@vesilehto.fi"
 
 [project.urls]
 Homepage = "https://github.com/thevilledev/nx-rustworkx"
+Documentation = "https://github.com/thevilledev/nx-rustworkx#readme"
 "Bug Tracker" = "https://github.com/thevilledev/nx-rustworkx/issues"
 "Source Code" = "https://github.com/thevilledev/nx-rustworkx"
+"Release Notes" = "https://github.com/thevilledev/nx-rustworkx/releases"
+PyPI = "https://pypi.org/project/nx-rustworkx/"
 
 [project.entry-points."networkx.backends"]
 rustworkx = "nx_rustworkx.interface:BackendInterface"
