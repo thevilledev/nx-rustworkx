@@ -532,14 +532,12 @@ class RustworkxGraph:
 
     def _neighbor_items(self, node: Any):
         idx = self.node_to_index[node]
-        for nbr_idx in self.rx_graph.neighbors(idx):
-            payload = None
-            if self.rx_graph.has_edge(idx, nbr_idx):
-                try:
-                    payload = self.rx_graph.get_edge_data(idx, nbr_idx)
-                except Exception:
-                    payload = None
-            yield self.index_to_node[nbr_idx], payload if payload is not None else {}
+        # One Rust crossing for the whole row. PyDiGraph.adj mixes in both
+        # directions, so ask for the outgoing side explicitly, as G.adj means.
+        row = self.rx_graph.adj_direction(idx, False) if self._directed else self.rx_graph.adj(idx)
+        index_to_node = self.index_to_node
+        for nbr_idx, payload in row.items():
+            yield index_to_node[nbr_idx], payload if payload is not None else {}
 
     def __str__(self) -> str:
         kind = "DiGraph" if self._directed else "Graph"

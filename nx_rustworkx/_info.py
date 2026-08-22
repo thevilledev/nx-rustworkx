@@ -17,7 +17,10 @@ _FUNCTIONS = {
     # --- centrality -------------------------------------------------------
     "betweenness_centrality": ["Unweighted Brandes only; ``k`` sampling falls back."],
     "edge_betweenness_centrality": ["Unweighted only; ``k`` sampling falls back."],
-    "closeness_centrality": ["Unweighted only; ``distance`` falls back."],
+    "closeness_centrality": [
+        "A string ``distance`` runs rustworkx's weighted kernel; callable "
+        "``distance`` falls back to NetworkX."
+    ],
     "eigenvector_centrality": ["``nstart`` falls back to NetworkX."],
     "degree_centrality": [
         "rustworkx divides by n - 1 where NetworkX multiplies by 1 / (n - 1), "
@@ -60,6 +63,9 @@ _FUNCTIONS = {
     "all_pairs_shortest_path": [_NO_CUTOFF],
     "all_pairs_shortest_path_length": [_NO_CUTOFF],
     "all_shortest_paths": ["Only the ``dijkstra`` method; ``bellman-ford`` falls back."],
+    "single_source_all_shortest_paths": [
+        "Only the ``dijkstra`` method; ``bellman-ford`` falls back."
+    ],
     "dijkstra_path": [],
     "dijkstra_path_length": [],
     "bellman_ford_path": [],
@@ -104,7 +110,12 @@ _FUNCTIONS = {
     "dag_longest_path_length": [],
     "transitive_reduction": ["Returns a NetworkX DiGraph."],
     "immediate_dominators": [],
+    "dominance_frontiers": [],
     "dfs_edges": ["``depth_limit`` and ``sort_neighbors`` fall back to NetworkX."],
+    "bfs_layers": [
+        "Each layer holds the right nodes, but the order inside one layer may "
+        "differ from NetworkX's discovery order."
+    ],
     # --- connectivity and components --------------------------------------
     "is_connected": ["Undirected graphs only."],
     "is_weakly_connected": ["Directed graphs only."],
@@ -118,7 +129,7 @@ _FUNCTIONS = {
     "strongly_connected_components": ["Directed graphs only."],
     "number_strongly_connected_components": ["Directed graphs only."],
     "articulation_points": ["Undirected graphs only."],
-    "bridges": ["Undirected graphs only; ``root`` falls back to NetworkX."],
+    "bridges": ["Undirected graphs only."],
     "biconnected_components": ["Undirected graphs only."],
     "condensation": [
         "Returns a NetworkX DiGraph with the ``members`` attribute and graph "
@@ -135,9 +146,19 @@ _FUNCTIONS = {
         "Undirected graphs only; ``root`` falls back to NetworkX.",
         "A cycle basis is not unique.",
     ],
+    "find_cycle": [
+        "Directed graphs only; ``orientation`` falls back to NetworkX.",
+        _TIE_BREAK,
+    ],
+    "chain_decomposition": [
+        "Undirected graphs only.",
+        "A chain decomposition is not unique, so the chains may differ from "
+        "NetworkX's while still being a valid decomposition.",
+    ],
     "core_number": [],
     # --- structure ---------------------------------------------------------
     "is_bipartite": [],
+    "is_planar": ["Directed input is checked on its undirected form, as NetworkX does."],
     "isolates": [],
     "number_of_isolates": [],
     "transitivity": [],
@@ -146,9 +167,14 @@ _FUNCTIONS = {
         "Undirected graphs only. rustworkx's blossom kernel takes integer edge "
         "weights, so non-integer weights fall back to NetworkX."
     ],
+    "is_matching": ["Undirected graphs only."],
+    "is_maximal_matching": ["Undirected graphs only."],
     "greedy_color": [
-        "Only ``strategy='largest_first'``; other strategies and "
-        "``interchange=True`` fall back to NetworkX."
+        "``largest_first``, ``saturation_largest_first``/``DSATUR``, and "
+        "``independent_set`` map to rustworkx strategies; other strategies and "
+        "``interchange=True`` fall back to NetworkX.",
+        "A greedy coloring is not unique, so colors may differ from NetworkX's "
+        "while using the same strategy.",
     ],
     "minimum_spanning_tree": [
         "Undirected graphs only. Returns a NetworkX Graph.",
@@ -165,14 +191,33 @@ _FUNCTIONS = {
         "Undirected graphs only. Returns a NetworkX Graph built by rustworkx's "
         "Kou approximation; other ``method`` values fall back to NetworkX."
     ],
+    "metric_closure": [
+        "Undirected connected graphs only. Returns a NetworkX Graph whose "
+        "``path`` attributes may name a different equally short path than "
+        "NetworkX's when several exist.",
+    ],
     # --- operators and paths ----------------------------------------------
     "complement": ["Returns a NetworkX graph."],
     "cartesian_product": ["Returns a NetworkX graph; node and edge attributes are dropped."],
     "tensor_product": ["Returns a NetworkX graph; node and edge attributes are dropped."],
-    "all_simple_paths": ["A collection of targets falls back to NetworkX."],
+    "line_graph": [
+        "Undirected graphs only; ``create_using`` falls back to NetworkX. Returns a NetworkX Graph."
+    ],
+    "all_simple_paths": [
+        "With a collection of targets, paths arrive grouped by target rather "
+        "than in NetworkX's traversal order."
+    ],
     # --- isomorphism -------------------------------------------------------
     "is_isomorphic": ["Structural VF2 only; ``node_match`` and ``edge_match`` fall back."],
     "vf2pp_is_isomorphic": ["Structural only; ``node_label`` falls back to NetworkX."],
+    "vf2pp_isomorphism": [
+        "Structural only; ``node_label`` falls back to NetworkX.",
+        "When several isomorphisms exist, the returned mapping may differ from NetworkX's.",
+    ],
+    "vf2pp_all_isomorphisms": [
+        "Structural only; ``node_label`` falls back to NetworkX.",
+        "Mappings may arrive in a different order than NetworkX yields them.",
+    ],
 }
 
 

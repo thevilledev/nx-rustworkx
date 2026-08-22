@@ -33,6 +33,7 @@ __all__ = [
     "all_pairs_shortest_path",
     "all_pairs_shortest_path_length",
     "all_shortest_paths",
+    "single_source_all_shortest_paths",
     "astar_path",
     "astar_path_length",
     "average_shortest_path_length",
@@ -557,9 +558,21 @@ def all_pairs_dijkstra(G, cutoff=None, weight="weight"):
     """Yield ``(source, (lengths, paths))`` for every node via rustworkx."""
     _ = cutoff
     rwg = as_rw_graph(G)
-    lengths = dict(_all_pairs_length_items(rwg, weight, "dijkstra"))
-    paths = dict(_all_pairs_path_items(rwg, weight, "dijkstra"))
-    return ((source, (lengths[source], paths[source])) for source in lengths)
+    raw_lengths = _all_pairs_lengths(rwg.rx_graph, weight, "dijkstra")
+    raw_paths = _all_pairs_paths(rwg.rx_graph, weight, "dijkstra")
+    index_to_node = rwg.index_to_node
+
+    def _iter():
+        # Remap one source at a time so only one row of Python dicts is alive.
+        for src_index, targets in raw_lengths.items():
+            src = index_to_node[src_index]
+            lengths = {index_to_node[t]: float(length) for t, length in targets.items()}
+            lengths[src] = 0.0
+            paths = remap_path_dict(rwg, raw_paths[src_index])
+            paths[src] = [src]
+            yield src, (lengths, paths)
+
+    return _iter()
 
 
 all_pairs_dijkstra.can_run = _can_run_weighted
@@ -670,6 +683,38 @@ def all_shortest_paths(G, source, target, weight=None, method="dijkstra"):
 all_shortest_paths.can_run = _can_run_all_shortest_paths
 
 
+def _can_run_ssasp(G, source, weight=None, method="dijkstra", **kwargs):
+    _ = source
+    reason = default_can_run(G, weight=weight)
+    if reason is not True:
+        return reason
+    if method not in {"dijkstra", "unweighted"}:
+        return "rustworkx single_source_all_shortest_paths only implements the dijkstra method"
+    return True
+
+
+def single_source_all_shortest_paths(G, source, weight=None, method="dijkstra"):
+    """Yield ``(target, all shortest paths)`` for every reachable node."""
+    _ = method
+    rwg = as_rw_graph(G)
+    src = require_node(rwg, source, kind="Source")
+    raw = rx.single_source_all_shortest_paths(
+        rwg.rx_graph,
+        src,
+        weight_fn=edge_weight_fn(weight),
+    )
+    index_to_node = rwg.index_to_node
+
+    def _iter():
+        for target, paths in raw.items():
+            yield index_to_node[target], [remap_path(rwg, path) for path in paths]
+
+    return _iter()
+
+
+single_source_all_shortest_paths.can_run = _can_run_ssasp
+
+
 def _heuristic_is_consistent(G, target, heuristic, weight) -> bool:
     """Check ``h(u) <= w(u, v) + h(v)`` on every edge, and ``h(target) == 0``.
 
@@ -724,14 +769,16 @@ def _can_run_astar(G, source, target, heuristic=None, weight="weight", cutoff=No
 
 def _astar_path(rwg, source, target, heuristic, weight):
     src = require_node(rwg, source, kind="Source")
-    require_node(rwg, target, kind="Target")
+    tgt = require_node(rwg, target, kind="Target")
     if source == target:
         return [source]
-    estimate = (
-        (lambda _payload: 0.0)
-        if heuristic is None
-        else (lambda payload: float(heuristic(payload, target)))
-    )
+    if heuristic is None:
+        # A* without a heuristic is Dijkstra, and the dedicated kernel avoids
+        # the per-node Python estimate callback while stopping at the target.
+        raw = _single_source_paths(rwg.rx_graph, src, weight, "dijkstra", target_idx=tgt)
+        if tgt not in raw:
+            raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
+        return remap_path(rwg, raw[tgt])
     weight_fn = edge_weight_fn(weight)
     try:
         path = rx.astar_shortest_path(
@@ -739,7 +786,7 @@ def _astar_path(rwg, source, target, heuristic, weight):
             src,
             lambda payload: payload == target,
             lambda data: weight_fn(data),
-            estimate,
+            lambda payload: float(heuristic(payload, target)),
         )
     except rx.NoPathFound as exc:
         raise nx.NetworkXNoPath(f"No path between {source} and {target}.") from exc
@@ -759,6 +806,17 @@ def astar_path_length(G, source, target, heuristic=None, weight="weight", *, cut
     """A* shortest path length via rustworkx."""
     _ = cutoff
     rwg = as_rw_graph(G)
+    if heuristic is None:
+        # A* without a heuristic is Dijkstra; the lengths kernel stops at the
+        # goal without materializing the path.
+        src = require_node(rwg, source, kind="Source")
+        tgt = require_node(rwg, target, kind="Target")
+        if source == target:
+            return 0
+        raw = _single_source_lengths(rwg.rx_graph, src, weight, "dijkstra", goal_idx=tgt)
+        if tgt not in raw:
+            raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
+        return float(raw[tgt])
     path = _astar_path(rwg, source, target, heuristic, weight)
     return _path_weight(rwg, path, weight)
 

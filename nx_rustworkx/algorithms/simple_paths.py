@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import networkx as nx
 import rustworkx as rx
 
 from nx_rustworkx.algorithms._utils import (
@@ -15,33 +16,42 @@ __all__ = ["all_simple_paths"]
 
 
 def _can_run_all_simple_paths(G, source, target, cutoff=None, **kwargs):
-    _ = source
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
-    if isinstance(target, (list, set, frozenset, tuple)) and target not in G:
-        return "rustworkx all_simple_paths takes a single target"
-    return True
+    _ = source, target, cutoff, kwargs
+    return reject_multigraph(G) or True
+
+
+def _resolve_targets(rwg, target):
+    """Mirror NetworkX: a single node, or an iterable whose missing nodes are
+    silently skipped. A non-node, non-iterable target is NodeNotFound."""
+    if rwg.has_node(target):
+        return [rwg.node_to_index[target]]
+    try:
+        candidates = dict.fromkeys(target)  # dedup, keeping first-seen order
+    except TypeError as exc:
+        raise nx.NodeNotFound(f"target node {target} not in graph") from exc
+    return [rwg.node_to_index[node] for node in candidates if node in rwg.node_to_index]
 
 
 def all_simple_paths(G, source, target, cutoff=None):
-    """Yield every simple path between two nodes via rustworkx."""
+    """Yield every simple path from ``source`` to the target node or nodes."""
     rwg = as_rw_graph(G)
     src = require_node(rwg, source, kind="Source")
-    tgt = require_node(rwg, target, kind="Target")
-    if src == tgt:
-        # NetworkX yields the trivial path when source and target coincide.
-        return iter([[source]])
+    targets = _resolve_targets(rwg, target)
     if cutoff is not None and cutoff < 1:
         return iter([])
 
     def _iter():
-        # rustworkx counts nodes where NetworkX counts edges.
-        paths = rx.all_simple_paths(
-            rwg.rx_graph, src, tgt, cutoff=None if cutoff is None else cutoff + 1
-        )
-        for path in paths:
-            yield remap_nodes(rwg, path)
+        for tgt in targets:
+            if tgt == src:
+                # NetworkX yields the trivial path when source and target coincide.
+                yield [source]
+                continue
+            # rustworkx counts nodes where NetworkX counts edges.
+            paths = rx.all_simple_paths(
+                rwg.rx_graph, src, tgt, cutoff=None if cutoff is None else cutoff + 1
+            )
+            for path in paths:
+                yield remap_nodes(rwg, path)
 
     return _iter()
 

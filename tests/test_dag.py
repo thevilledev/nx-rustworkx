@@ -149,3 +149,61 @@ def test_dfs_edges_rejects_depth_limit():
 
     G = nx.path_graph(5)
     assert BackendInterface.can_run("dfs_edges", (G, 0), {"depth_limit": 2}) is not True
+
+
+@pytest.mark.parametrize("G", DAGS)
+def test_dominance_frontiers_match(G):
+    assert nx.dominance_frontiers(G, 0, backend="rustworkx") == nx.dominance_frontiers.orig_func(
+        G, 0
+    )
+
+
+def test_dominance_frontiers_with_unreachable_nodes():
+    G = nx.DiGraph([(0, 1), (1, 2), (2, 1), (0, 2), (5, 6)])
+    got = nx.dominance_frontiers(G, 0, backend="rustworkx")
+    assert got == nx.dominance_frontiers.orig_func(G, 0)
+    assert 5 not in got and 6 not in got
+
+
+def test_bfs_layers_match_as_sets():
+    G = nx.gnp_random_graph(40, 0.1, seed=5)
+    got = [set(layer) for layer in nx.bfs_layers(G, [0], backend="rustworkx")]
+    expected = [set(layer) for layer in nx.bfs_layers.orig_func(G, [0])]
+    assert got == expected
+    D = nx.DiGraph([(0, 1), (1, 2), (3, 0)])
+    got = [set(layer) for layer in nx.bfs_layers(D, [0, 3], backend="rustworkx")]
+    expected = [set(layer) for layer in nx.bfs_layers.orig_func(D, [0, 3])]
+    assert got == expected
+
+
+def test_bfs_layers_missing_source_raises():
+    G = nx.path_graph(4)
+    with pytest.raises(nx.NetworkXError):
+        next(nx.bfs_layers(G, ["missing"], backend="rustworkx"))
+
+
+def test_dominance_frontiers_cyclic():
+    """rustworkx omits the start node from frontiers; the wrapper restores it."""
+    C = nx.cycle_graph(5, create_using=nx.DiGraph)
+    assert nx.dominance_frontiers(C, 0, backend="rustworkx") == nx.dominance_frontiers.orig_func(
+        C, 0
+    )
+    L = nx.DiGraph([(0, 1), (1, 2), (2, 1), (2, 0)])
+    assert nx.dominance_frontiers(L, 0, backend="rustworkx") == nx.dominance_frontiers.orig_func(
+        L, 0
+    )
+    S = nx.DiGraph()
+    S.add_edge(0, 0)
+    assert nx.dominance_frontiers(S, 0, backend="rustworkx") == nx.dominance_frontiers.orig_func(
+        S, 0
+    )
+
+
+def test_dominance_frontiers_fuzz():
+    rng = random.Random(0)
+    for _ in range(30):
+        G = nx.gnp_random_graph(
+            rng.randrange(3, 30), rng.uniform(0.05, 0.4), seed=rng.randrange(10**6), directed=True
+        )
+        got = nx.dominance_frontiers(G, 0, backend="rustworkx")
+        assert got == nx.dominance_frontiers.orig_func(G, 0)

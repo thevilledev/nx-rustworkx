@@ -130,3 +130,20 @@ def test_priority_hits_rustworkx_on_large_graph(monkeypatch):
     finally:
         nx.config.backend_priority = []
     assert called.get("yes") is True
+
+
+def test_weighted_closeness_matches():
+    for directed in (False, True):
+        G = nx.gnp_random_graph(60, 0.1, seed=4, directed=directed)
+        for u, v in G.edges():
+            G[u][v]["dist"] = 1 + ((u * 3 + v) % 5)
+        got = nx.closeness_centrality(G, distance="dist", backend="rustworkx")
+        expected = nx.closeness_centrality.orig_func(G, distance="dist")
+        assert got == pytest.approx(expected)
+    # Callable distances still fall back.
+    from nx_rustworkx.interface import BackendInterface
+
+    reason = BackendInterface.can_run(
+        "closeness_centrality", (nx.path_graph(3),), {"distance": lambda u, v, d: 1}
+    )
+    assert reason is not True

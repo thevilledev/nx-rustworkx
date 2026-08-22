@@ -181,21 +181,31 @@ articulation_points.can_run = can_run_undirected
 
 
 def _can_run_bridges(G, root=None, **kwargs):
-    reason = can_run_undirected(G)
-    if reason is not True:
-        return reason
-    if root is not None:
-        return "rustworkx bridges does not support root"
-    return True
+    _ = root
+    return can_run_undirected(G)
 
 
 def bridges(G, root=None):
-    """Yield the bridges of an undirected graph."""
-    _ = root
+    """Yield the bridges of an undirected graph.
+
+    With ``root``, only bridges in the connected component containing it.
+    Bridges are reported in edge-insertion order, as NetworkX yields them.
+    """
     rwg = as_rw_graph(G)
     require_undirected(rwg)
+    component = None
+    if root is not None:
+        index = require_node(rwg, root)
+        component = set(rx.node_connected_component(rwg.rx_graph, index))
+    bridge_set = {frozenset(pair) for pair in rx.bridges(rwg.rx_graph)}
     index_to_node = rwg.index_to_node
-    return iter([(index_to_node[u], index_to_node[v]) for u, v in rx.bridges(rwg.rx_graph)])
+    return iter(
+        [
+            (index_to_node[u], index_to_node[v])
+            for u, v in rwg.rx_graph.edge_list()
+            if frozenset((u, v)) in bridge_set and (component is None or u in component)
+        ]
+    )
 
 
 bridges.can_run = _can_run_bridges

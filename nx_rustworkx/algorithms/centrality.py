@@ -136,11 +136,23 @@ def _can_run_closeness(G, u=None, distance=None, wf_improved=True, **kwargs):
     reason = reject_multigraph(G)
     if reason:
         return reason
-    if distance is not None:
-        return reject_callable_weight(distance) or (
-            "rustworkx closeness_centrality is unweighted only"
-        )
+    if callable(distance):
+        return "nx-rustworkx does not support custom weight callables"
     return True
+
+
+def _distance_as_strength(distance):
+    """Turn an edge-distance read into the connection strength rustworkx's
+    Newman closeness kernel expects: ``strength = 1 / distance``."""
+    import math
+
+    weight_fn = edge_weight_fn(distance)
+
+    def _fn(data):
+        value = weight_fn(data)
+        return math.inf if value == 0 else 1.0 / value
+
+    return _fn
 
 
 def closeness_centrality(
@@ -152,14 +164,22 @@ def closeness_centrality(
     parallel_threshold=50,
     **kwargs,
 ):
-    """Unweighted closeness via rustworkx."""
-    _ = distance, kwargs
+    """Closeness via rustworkx; a string ``distance`` uses the weighted kernel."""
+    _ = kwargs
     rwg = as_rw_graph(G)
-    scores = rx.closeness_centrality(
-        rwg.rx_graph,
-        wf_improved=bool(wf_improved),
-        parallel_threshold=parallel_threshold,
-    )
+    if distance is None:
+        scores = rx.closeness_centrality(
+            rwg.rx_graph,
+            wf_improved=bool(wf_improved),
+            parallel_threshold=parallel_threshold,
+        )
+    else:
+        scores = rx.newman_weighted_closeness_centrality(
+            rwg.rx_graph,
+            _distance_as_strength(distance),
+            wf_improved=bool(wf_improved),
+            parallel_threshold=parallel_threshold,
+        )
     remapped = remap_scores(rwg, scores)
     if u is not None:
         return remapped[u]
