@@ -13,7 +13,7 @@ calls stay on NetworkX.
 pip install nx-rustworkx
 ```
 
-Requires Python 3.10+, NetworkX 3.4+, and rustworkx 0.15+.
+Requires Python 3.10+, NetworkX 3.4+, and rustworkx 0.18+.
 
 ## Use
 

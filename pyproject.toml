@@ -28,7 +28,9 @@ classifiers = [
 ]
 dependencies = [
     "networkx>=3.4",
-    "rustworkx>=0.15",
+    # group_*_centrality, condensation, bfs_layers, and immediate_dominators
+    # only exist since rustworkx 0.18; older releases fail at call time.
+    "rustworkx>=0.18",
 ]
 
 [[project.authors]]
