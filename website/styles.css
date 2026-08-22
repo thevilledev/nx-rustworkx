@@ -105,6 +105,8 @@ nav.top {
   font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
   font-size: 0.85em;
   margin: 0.25em 0 1em;
+  overflow-x: auto;
+  white-space: nowrap;
 }
 
 table {
