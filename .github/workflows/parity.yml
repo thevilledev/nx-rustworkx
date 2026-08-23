@@ -1,9 +1,12 @@
 name: Parity gate
 
 # bench_parity.py exits non-zero when a function that measures slower than
-# NetworkX would still be selected under automatic backend priority. Timing in
-# CI is noisy, so this runs on a schedule rather than per pull request; the
-# bench's 0.9x materiality threshold absorbs run-to-run jitter.
+# NetworkX would still be selected under automatic backend priority, and
+# bench_generators.py when a native generator measures materially slower than
+# NetworkX (generators have no should_run gate to tune, so the remedy there is
+# dropping the kernel). Timing in CI is noisy, so this runs on a schedule
+# rather than per pull request; the benches' 0.9x materiality threshold
+# absorbs run-to-run jitter.
 
 on:
   schedule:
@@ -32,3 +35,7 @@ jobs:
         run: uv run --frozen python benches/bench_parity.py --nodes 800
       - name: Parity at n=2000
         run: uv run --frozen python benches/bench_parity.py --nodes 2000
+      - name: Generator parity at n=800
+        run: uv run --frozen python benches/bench_generators.py --nodes 800
+      - name: Generator parity at n=2000
+        run: uv run --frozen python benches/bench_generators.py --nodes 2000
