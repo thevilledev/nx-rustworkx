@@ -6,6 +6,7 @@ import math
 import numbers
 
 import networkx as nx
+import numpy as np
 import rustworkx as rx
 from rustworkx import generators as rxgen
 
@@ -27,6 +28,14 @@ __all__ = [
     "full_rary_tree",
     "karate_club_graph",
     "grid_2d_graph",
+    "gnp_random_graph",
+    "fast_gnp_random_graph",
+    "gnm_random_graph",
+    "dense_gnm_random_graph",
+    "random_regular_graph",
+    "stochastic_block_model",
+    "random_geometric_graph",
+    "barabasi_albert_graph",
     "GENERATORS",
 ]
 
@@ -635,6 +644,178 @@ def dense_gnm_random_graph(n, m, seed=None, *, create_using=None):
 dense_gnm_random_graph.can_run = _can_run_dense_gnm
 dense_gnm_random_graph.should_run = _should_run_always
 
+
+def _can_run_regular(d=None, n=None, seed=None, *, create_using=None, **kwargs):
+    _ = d, n, seed, kwargs
+    return _can_run_random_common(create_using)
+
+
+def random_regular_graph(d, n, seed=None, *, create_using=None):
+    """``d``-regular graph from the same pairing model NetworkX uses.
+
+    rustworkx's kernel documents itself as based on NetworkX's
+    ``random_regular_graph``, so only the RNG differs.
+    """
+    _reject_create_using(create_using)
+    if (n * d) % 2 != 0:
+        raise nx.NetworkXError("n * d must be even")
+    if not 0 <= d < n:
+        raise nx.NetworkXError("the 0 <= d < n inequality must be satisfied")
+    _check_seed_policy(seed)
+    g = rx.random_regular_graph(int(n), int(d), seed=_rx_seed(seed))
+    return _wrap(g, range(int(n)), directed=False)
+
+
+random_regular_graph.can_run = _can_run_regular
+random_regular_graph.should_run = _should_run_always
+
+
+def _can_run_sbm(
+    sizes=None,
+    p=None,
+    nodelist=None,
+    seed=None,
+    directed=False,
+    selfloops=False,
+    sparse=True,
+    **kwargs,
+):
+    _ = sizes, p, nodelist, seed, directed, selfloops, sparse, kwargs
+    return _can_run_random_common(None)
+
+
+def stochastic_block_model(
+    sizes, p, nodelist=None, seed=None, directed=False, selfloops=False, sparse=True
+):
+    """SBM sampled by rustworkx with NetworkX's partition and block attributes.
+
+    ``sparse`` only selects NetworkX's sampling algorithm, so it is ignored.
+    The validations below mirror NetworkX's, message for message.
+    """
+    _ = sparse
+    if len(sizes) != len(p):
+        raise nx.NetworkXException("'sizes' and 'p' do not match.")
+    for row in p:
+        if len(p) != len(row):
+            raise nx.NetworkXException("'p' must be a square matrix.")
+    if not directed:
+        p_transpose = [list(i) for i in zip(*p)]
+        for rows in zip(p, p_transpose):
+            for pair in zip(rows[0], rows[1]):
+                if abs(pair[0] - pair[1]) > 1e-08:
+                    raise nx.NetworkXException("'p' must be symmetric.")
+    for row in p:
+        for prob in row:
+            if prob < 0 or prob > 1:
+                raise nx.NetworkXException("Entries of 'p' not in [0,1].")
+    if nodelist is not None:
+        if len(nodelist) != sum(sizes):
+            raise nx.NetworkXException("'nodelist' and 'sizes' do not match.")
+        if len(nodelist) != len(set(nodelist)):
+            raise nx.NetworkXException("nodelist contains duplicate.")
+        labels = list(nodelist)
+    else:
+        labels = list(range(sum(sizes)))
+    _check_seed_policy(seed)
+    kernel = rx.directed_sbm_random_graph if directed else rx.undirected_sbm_random_graph
+    g = kernel(
+        [int(s) for s in sizes],
+        np.asarray(p, dtype=float),
+        bool(selfloops),
+        seed=_rx_seed(seed),
+    )
+    out = _wrap(g, labels, directed=directed)
+    size_cumsum = [sum(sizes[0:x]) for x in range(len(sizes) + 1)]
+    partition = [
+        set(labels[size_cumsum[x] : size_cumsum[x + 1]]) for x in range(len(size_cumsum) - 1)
+    ]
+    out.graph["partition"] = partition
+    out.graph["name"] = "stochastic_block_model"
+    for block_id, block_nodes in enumerate(partition):
+        for node in block_nodes:
+            out.node_attrs[node] = {"block": block_id}
+    return out
+
+
+stochastic_block_model.can_run = _can_run_sbm
+stochastic_block_model.should_run = _should_run_always
+
+
+def _can_run_geometric(
+    n=None, radius=None, dim=2, pos=None, p=2, seed=None, *, pos_name="pos", **kwargs
+):
+    _ = n, radius, dim, p, seed, pos_name, kwargs
+    reason = _can_run_random_common(None)
+    if reason is not True:
+        return reason
+    if pos is not None:
+        return "explicit pos falls back to NetworkX"
+    return True
+
+
+def random_geometric_graph(n, radius, dim=2, pos=None, p=2, seed=None, *, pos_name="pos"):
+    """Random geometric graph with rustworkx-sampled positions.
+
+    Positions land on each node under ``pos_name``, as NetworkX stores them.
+    """
+    if pos is not None:
+        raise NotImplementedError(
+            "nx-rustworkx random_geometric_graph does not support explicit pos"
+        )
+    nodes = _nodes_list(n)
+    k = len(nodes)
+    if k == 0:
+        return _wrap(_empty_container(False), nodes, directed=False)
+    _check_seed_policy(seed)
+    g = rx.random_geometric_graph(k, float(radius), dim=int(dim), p=float(p), seed=_rx_seed(seed))
+    out = _wrap(g, nodes, directed=False)
+    index_to_node = out.index_to_node
+    out.node_attrs.update(
+        {index_to_node[i]: {pos_name: g.get_node_data(i)["pos"]} for i in range(k)}
+    )
+    return out
+
+
+random_geometric_graph.can_run = _can_run_geometric
+random_geometric_graph.should_run = _should_run_always
+
+
+def _can_run_ba(n=None, m=None, seed=None, initial_graph=None, *, create_using=None, **kwargs):
+    _ = n, m, seed, kwargs
+    reason = _can_run_random_common(create_using)
+    if reason is not True:
+        return reason
+    if initial_graph is not None:
+        return "initial_graph falls back to NetworkX"
+    return True
+
+
+def barabasi_albert_graph(n, m, seed=None, initial_graph=None, *, create_using=None):
+    """Barabasi-Albert growth from NetworkX's star seed, attached in Rust.
+
+    rustworkx's default initial condition differs from NetworkX's, so pass
+    NetworkX's ``star_graph(m)`` seed explicitly; the growth process is then
+    the same model and only the RNG differs.
+    """
+    _reject_create_using(create_using)
+    if initial_graph is not None:
+        raise NotImplementedError(
+            "nx-rustworkx barabasi_albert_graph does not support initial_graph"
+        )
+    if m < 1 or m >= n:
+        raise nx.NetworkXError(
+            # The en dash matches NetworkX's error text exactly.
+            f"Barabási–Albert network must have m >= 1 and m < n, m = {m}, n = {n}"  # noqa: RUF001
+        )
+    _check_seed_policy(seed)
+    star = rxgen.star_graph(int(m) + 1, multigraph=False)
+    g = rx.barabasi_albert_graph(int(n), int(m), seed=_rx_seed(seed), initial_graph=star)
+    return _wrap(g, range(g.num_nodes()), directed=False)
+
+
+barabasi_albert_graph.can_run = _can_run_ba
+barabasi_albert_graph.should_run = _should_run_always
+
 GENERATORS = [
     "graph__new__",
     "digraph__new__",
@@ -654,4 +835,8 @@ GENERATORS = [
     "fast_gnp_random_graph",
     "gnm_random_graph",
     "dense_gnm_random_graph",
+    "random_regular_graph",
+    "stochastic_block_model",
+    "random_geometric_graph",
+    "barabasi_albert_graph",
 ]
