@@ -235,6 +235,35 @@ def test_add_nodes_from_applies_shared_and_per_node_attrs():
     assert G.nodes["b"] == {"kind": "node", "color": "blue"}
 
 
+def test_add_nodes_from_matches_networkx_order_and_dedup():
+    nodes = [3, 1, 3, ("mixed", {"kind": "pair"}), 2, 1, (5, 6)]
+    G = rustworkx_graph()
+    G.add_nodes_from(nodes)
+    H = nx.Graph()
+    H.add_nodes_from(nodes)
+    assert list(G) == list(H)
+    assert G.nodes["mixed"] == H.nodes["mixed"] == {"kind": "pair"}
+    assert (5, 6) in G.nodes  # a plain 2-tuple is a node, not a (node, dict) pair
+
+
+def test_add_nodes_from_keeps_existing_attributes():
+    G = rustworkx_graph()
+    G.add_node(1, color="red")
+    G.add_nodes_from([1, 2])
+    assert G.nodes[1] == {"color": "red"}
+    assert set(G) == {1, 2}
+
+
+def test_add_nodes_from_batches_bind_the_identity_maps():
+    G = rustworkx_graph()
+    G.add_nodes_from(range(1000))
+    assert G.number_of_nodes() == 1000
+    assert G.node_to_index[999] == 999
+    assert G.index_to_node[0] == 0
+    G.add_edge(0, 999)
+    assert G.has_edge(0, 999)
+
+
 def test_node_attributes_follow_copies_and_orientation():
     G = nx.empty_graph(0, backend="rustworkx")
     G.add_node(1, color="red")
