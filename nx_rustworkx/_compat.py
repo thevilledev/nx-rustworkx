@@ -18,6 +18,7 @@ __all__ = [
     "immediate_dominators_includes_start",
     "metric_closure_is_deprecated",
     "single_target_shortest_path_length_returns_dict",
+    "star_graph_allows_directed",
 ]
 
 
@@ -49,6 +50,16 @@ def metric_closure_is_deprecated() -> bool:
         warnings.simplefilter("always")
         func(nx.path_graph(2))
     return any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+
+@lru_cache(maxsize=None)
+def star_graph_allows_directed() -> bool:
+    """NetworkX 3.6 started accepting a directed ``create_using`` in star_graph."""
+    try:
+        _orig("star_graph")(1, create_using=nx.DiGraph)
+    except nx.NetworkXError:
+        return False
+    return True
 
 
 @lru_cache(maxsize=None)

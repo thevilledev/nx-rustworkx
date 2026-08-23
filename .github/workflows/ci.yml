@@ -57,6 +57,12 @@ jobs:
         env:
           NETWORKX_TEST_BACKEND: rustworkx
         run: uv run --frozen pytest --pyargs networkx.algorithms -q
+      # Strict-verifies every native generator against NetworkX's output;
+      # random generators sit the comparison out via can_run.
+      - name: NetworkX generator suite through the backend
+        env:
+          NETWORKX_TEST_BACKEND: rustworkx
+        run: uv run --frozen pytest --pyargs networkx.generators -q
 
   # The lockfile tests the newest supported stack; this leg tests the floors
   # the README declares: Python 3.10, NetworkX 3.4, rustworkx 0.18.

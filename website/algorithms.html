@@ -31,9 +31,9 @@
       <h1>Algorithms</h1>
 
       <p>
-        The backend implements 105 NetworkX algorithms plus constructors for a
-        rustworkx-backed graph. Anything outside this list stays on NetworkX
-        when the input is still an ordinary NetworkX graph.
+        The backend implements 105 NetworkX algorithms plus constructors and
+        generators for rustworkx-backed graphs. Anything outside this list
+        stays on NetworkX when the input is still an ordinary NetworkX graph.
       </p>
 
       <div class="table-scroll">
@@ -59,6 +59,8 @@
             <tr><th scope="row">Simple paths</th><td><code>all_simple_paths</code></td></tr>
             <tr><th scope="row">Isomorphism</th><td><code>is_isomorphic</code>, <code>vf2pp_is_isomorphic</code>, <code>vf2pp_isomorphism</code>, <code>vf2pp_all_isomorphisms</code></td></tr>
             <tr><th scope="row">Construction</th><td><code>Graph</code>, <code>DiGraph</code>, <code>empty_graph</code>, <code>from_edgelist</code></td></tr>
+            <tr><th scope="row">Generators</th><td><code>path_graph</code>, <code>cycle_graph</code>, <code>star_graph</code>, <code>complete_graph</code>, <code>barbell_graph</code>, <code>lollipop_graph</code>, <code>binomial_tree</code>, <code>full_rary_tree</code>, <code>karate_club_graph</code>, <code>grid_2d_graph</code></td></tr>
+            <tr><th scope="row">Random generators</th><td><code>gnp_random_graph</code>, <code>fast_gnp_random_graph</code>, <code>gnm_random_graph</code>, <code>dense_gnm_random_graph</code></td></tr>
           </tbody>
         </table>
       </div>
@@ -83,6 +85,14 @@
         weighted pairs run the kernel with early termination and dispatch.
       </p>
 
+      <p>
+        Generators have no size cutoff: there is no conversion cost to
+        amortize, and the dispatcher never consults <code>should_run</code>
+        for them. Random generators with an explicit <code>seed</code> fall
+        back to NetworkX's sampler by default; see
+        <a href="usage.html#seeded">seeded random generators</a>.
+      </p>
+
       <h2 id="limits">Compatibility limits</h2>
 
       <p>The backend rejects argument shapes it cannot honor:</p>
@@ -96,6 +106,7 @@
         <li><code>greedy_color</code> implements <code>largest_first</code>, <code>saturation_largest_first</code>/<code>DSATUR</code>, and <code>independent_set</code>; other strategies fall through.</li>
         <li><code>max_weight_matching</code> requires integer edge weights.</li>
         <li>A* requires a consistent heuristic. Disable the check with <code>nx.config.backends.rustworkx.astar_heuristic_check = False</code> only when you already know it is consistent.</li>
+        <li>Random generators take no <code>create_using</code>; <code>grid_2d_graph</code> handles undirected, non-periodic grids. Both fall through otherwise.</li>
       </ul>
 
       <h2 id="valid-differences">Valid differences</h2>
@@ -112,7 +123,17 @@
       </p>
 
       <p>
-        Graph-returning functions return real NetworkX graphs. Backend metadata
+        Random generators sample with rustworkx's RNG when
+        <code>nx.config.backends.rustworkx.native_seeded_generators</code> is
+        enabled, so a seeded call draws a different &mdash; equally valid
+        &mdash; graph than NetworkX's for the same seed. The same seed then
+        reproduces the same graph for a pinned rustworkx version. Deterministic
+        generators always match NetworkX exactly.
+      </p>
+
+      <p>
+        Graph-returning algorithms return real NetworkX graphs; generators
+        return rustworkx-backed graphs. Backend metadata
         publishes per-function caveats, so <code>help(nx.function_name)</code>
         shows the relevant constraints after installation.
       </p>

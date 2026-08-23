@@ -102,3 +102,9 @@ def test_compat_probes_match_installed_networkx():
         warnings.simplefilter("ignore", FutureWarning)
         reference = nx.single_target_shortest_path_length.orig_func(G, 1)
     assert _compat.single_target_shortest_path_length_returns_dict() == isinstance(reference, dict)
+    try:
+        nx.star_graph.orig_func(1, create_using=nx.DiGraph)
+        directed_star = True
+    except nx.NetworkXError:
+        directed_star = False
+    assert _compat.star_graph_allows_directed() == directed_star
