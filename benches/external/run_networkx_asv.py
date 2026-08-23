@@ -143,10 +143,12 @@ def probe(out_dir: Path) -> None:
     for n in (10, 100, 1000):
         for p in (0.1, 0.5, 0.9):
             G = _weighted(nx.fast_gnp_random_graph, n, p, seed=42)
+            # The suite labels graphs by __name__, and nx.erdos_renyi_graph
+            # is an alias whose __name__ is gnp_random_graph.
             add(
                 "shortest_path",
                 G,
-                f"weighted_graph(42, erdos_renyi_graph, {n}, {p}, seed=42)",
+                f"weighted_graph(42, gnp_random_graph, {n}, {p}, seed=42)",
                 {**sp_kwargs, "source": 0, "target": n - 1},
             )
 

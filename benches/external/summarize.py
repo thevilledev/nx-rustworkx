@@ -168,17 +168,19 @@ def t2_section(t2_dir: Path | None, warnings: list[str]) -> list[str]:
             )
             if nx_t and rw_t:
                 ratio = nx_t / rw_t
-                if disp == "yes" and 0.9 < ratio < 1.15:
+                # Sub-millisecond cells are timer noise; don't flag their ratios.
+                audible = nx_t > 1e-3 and rw_t > 1e-3
+                if disp == "yes" and audible and 0.9 < ratio < 1.15:
                     warnings.append(
                         f"T2 {short_name(name)} [{label}]: expected dispatch but "
                         f"~no delta ({ratio:.2f}x) — verify"
                     )
-                if disp == "yes" and ratio < 0.8:
+                if disp == "yes" and ratio < 0.8 and rw_t > 5e-4:
                     warnings.append(
                         f"T2 {short_name(name)} [{label}]: backend dispatched and "
                         f"LOST ({ratio:.2f}x) — should_run tuning candidate"
                     )
-                if disp.startswith("no") and (ratio > 1.3 or ratio < 0.7):
+                if disp.startswith("no") and audible and (ratio > 1.3 or ratio < 0.7):
                     warnings.append(
                         f"T2 {short_name(name)} [{label}]: expected tie (declined) "
                         f"but {ratio:.2f}x — verify"
@@ -278,6 +280,20 @@ def main() -> int:
         "- T1 cells time a single cold call (conversion included); T2 cells are "
         "asv medians where NetworkX's conversion cache (default on since 3.4) "
         "amortizes conversion; T3 reports both cold and steady-state routing.",
+        "- **Cold-call economics**: T1's sub-1x rows are all near-linear "
+        "functions (component counts, isolates, unweighted BFS all-pairs on "
+        "dense low-diameter graphs) where a single cold call cannot amortize "
+        "the O(m) conversion. Superlinear kernels (betweenness, weighted "
+        "all-pairs) win 5-50x even cold; repeat-call workloads amortize "
+        "conversion through the cache either way.",
+        "- **Known gap found by T2**: weighted single-pair `shortest_path` "
+        "auto-dispatches but can lose badly (0.02-0.4x on path-shaped and "
+        "dense graphs). NetworkX answers a weighted pair with bidirectional "
+        "Dijkstra, while the backend runs a full single-source kernel whose "
+        "rustworkx PathMapping materializes paths for every visited node and "
+        "pays a per-edge Python weight callback. On road-network shapes it "
+        "still wins modestly (T3: 1.5x), so the fix is should_run tuning or a "
+        "lengths+predecessor kernel, not removal.",
         "- Same machine, same process pattern for both arms in every target; "
         "still: single-machine numbers, expect variance.",
         "",
