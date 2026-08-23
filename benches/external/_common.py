@@ -30,9 +30,7 @@ def run(
     """Run a subprocess, echoing the command line first."""
     printable = " ".join(str(c) for c in cmd)
     log(f"$ {printable}" + (f"  (cwd={cwd})" if cwd else ""))
-    return subprocess.run(
-        [str(c) for c in cmd], cwd=cwd, env=env, timeout=timeout, check=check
-    )
+    return subprocess.run([str(c) for c in cmd], cwd=cwd, env=env, timeout=timeout, check=check)
 
 
 def clone_at(url: str, rev: str, workdir: Path, name: str) -> Path:
@@ -108,9 +106,7 @@ def asv_result_files(snapshot_dir: Path) -> list[Path]:
     if not snapshot_dir.exists():
         return []
     return [
-        f
-        for f in snapshot_dir.rglob("*.json")
-        if f.name not in ("benchmarks.json", "machine.json")
+        f for f in snapshot_dir.rglob("*.json") if f.name not in ("benchmarks.json", "machine.json")
     ]
 
 

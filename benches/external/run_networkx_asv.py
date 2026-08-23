@@ -35,8 +35,7 @@ from _common import log
 UPSTREAM = "https://github.com/networkx/networkx"
 PIN = "7530809bfa1ea7ed6fdf918a4d1431488953cb1f"  # tag networkx-3.6.1
 DRUG_URL = (
-    "https://snap.stanford.edu/biodata/datasets/10001/files/"
-    "ChCh-Miner_durgbank-chem-chem.tsv.gz"
+    "https://snap.stanford.edu/biodata/datasets/10001/files/ChCh-Miner_durgbank-chem-chem.tsv.gz"
 )
 DRUG_PATCHES = [
     ("        fetch_drug_interaction_network(),\n", ""),
@@ -102,10 +101,19 @@ def probe(out_dir: Path) -> None:
     # Labels must match the suite's literal param strings (str(0.00005) would
     # render as "5e-05" and miss).
     directed_specs = [
-        (100, "0.005"), (100, "0.01"), (100, "0.05"), (100, "0.1"), (100, "0.5"),
-        (1000, "0.0005"), (1000, "0.001"), (1000, "0.005"), (1000, "0.01"),
+        (100, "0.005"),
+        (100, "0.01"),
+        (100, "0.05"),
+        (100, "0.1"),
+        (100, "0.5"),
+        (1000, "0.0005"),
+        (1000, "0.001"),
+        (1000, "0.005"),
+        (1000, "0.01"),
         (1000, "0.05"),
-        (10000, "0.00005"), (10000, "0.0001"), (10000, "0.0005"),
+        (10000, "0.00005"),
+        (10000, "0.0001"),
+        (10000, "0.0005"),
     ]
     for n, p_str in directed_specs:
         G = nx.fast_gnp_random_graph(n, float(p_str), seed=42, directed=True)
@@ -152,9 +160,7 @@ def probe(out_dir: Path) -> None:
                 {**sp_kwargs, "source": 0, "target": n - 1},
             )
 
-    atlas_standin = nx.disjoint_union_all(
-        [nx.gnm_random_graph(5, 6, seed=i) for i in range(142)]
-    )
+    atlas_standin = nx.disjoint_union_all([nx.gnm_random_graph(5, 6, seed=i) for i in range(142)])
     add(
         "single_source_all_shortest_paths",
         atlas_standin,
@@ -167,9 +173,14 @@ def probe(out_dir: Path) -> None:
 
 def run_arm(bench_dir: Path, rev: str, env: dict, launch: list[str], timebox: float) -> int:
     cmd = [
-        sys.executable, "-m", "asv", "run",
-        "-E", "existing:same",
-        "--set-commit-hash", rev,
+        sys.executable,
+        "-m",
+        "asv",
+        "run",
+        "-E",
+        "existing:same",
+        "--set-commit-hash",
+        rev,
         "--show-stderr",
         *launch,
     ]

@@ -77,7 +77,8 @@ def multidigraph_to_digraph(G, weight: str) -> nx.DiGraph:
 
 
 def from_osmnx_graph(G) -> nx.DiGraph:
-    import osmnx as ox
+    # osmnx is a demo-only dependency, absent from the lint environment.
+    import osmnx as ox  # pyright: ignore[reportMissingImports]
 
     G = ox.routing.add_edge_speeds(G)
     G = ox.routing.add_edge_travel_times(G)
@@ -100,7 +101,7 @@ def acquire(args) -> tuple[nx.DiGraph, dict]:
         return load_graphml(Path(args.graphml)), {"source": "graphml", "path": args.graphml}
     if not args.synthetic:
         try:
-            import osmnx as ox
+            import osmnx as ox  # pyright: ignore[reportMissingImports]
 
             ox.settings.use_cache = True
             ox.settings.cache_folder = str(args.workdir / "osmnx-cache")
@@ -184,10 +185,7 @@ def main() -> int:
             lambda: sp(D, *pairs[0], weight="travel_time", backend="rustworkx")
         )
         t_rest, rest_routes = time_once(
-            lambda: [
-                sp(D, o, d, weight="travel_time", backend="rustworkx")
-                for o, d in pairs[1:]
-            ]
+            lambda: [sp(D, o, d, weight="travel_time", backend="rustworkx") for o, d in pairs[1:]]
         )
     assert counts.get("shortest_path") == len(pairs), counts
     backend_routes = [first_route, *rest_routes]
@@ -271,10 +269,7 @@ def main() -> int:
     print()
     print(f"{'workload':52} {'NetworkX':>10} {'rustworkx':>10} {'speedup':>8}")
     for w in workloads:
-        print(
-            f"{w['name']:52} {w['stock_s']:>9.3f}s {w['backend_s']:>9.3f}s "
-            f"{w['speedup']:>7.1f}x"
-        )
+        print(f"{w['name']:52} {w['stock_s']:>9.3f}s {w['backend_s']:>9.3f}s {w['speedup']:>7.1f}x")
     return 0
 
 

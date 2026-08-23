@@ -86,7 +86,7 @@ def t1_section(t1_dir: Path | None, warnings: list[str]) -> list[str]:
         return [*lines, "_no results captured_", ""]
     lines += [
         f"Upstream `{meta['rev'][:12]}`, one-line backend patch "
-        "(`backends = [\"rustworkx\", None]`); `repeat = number = 1`, so every "
+        '(`backends = ["rustworkx", None]`); `repeat = number = 1`, so every '
         "rustworkx cell is a **cold call including nx→rustworkx conversion**.",
         "",
         "| benchmark | params | NetworkX | rustworkx (incl. convert) | speedup |",
@@ -106,8 +106,7 @@ def t1_section(t1_dir: Path | None, warnings: list[str]) -> list[str]:
             )
             if nx_t is not None and rw_t is not None and nx_t / rw_t < 0.9:
                 warnings.append(
-                    f"T1 {short_name(name)} [{label}]: rustworkx slower "
-                    f"({nx_t / rw_t:.2f}x)"
+                    f"T1 {short_name(name)} [{label}]: rustworkx slower ({nx_t / rw_t:.2f}x)"
                 )
     return [*lines, ""]
 
@@ -146,7 +145,7 @@ def t2_section(t2_dir: Path | None, warnings: list[str]) -> list[str]:
     lines += [
         f"NetworkX `{meta['rev'][:12]}` (tag networkx-3.6.1), **no benchmark-code "
         "changes**: the second arm only sets `NETWORKX_BACKEND_PRIORITY=rustworkx`."
-        f"{drug_note} Rows marked \"no\" are the backend's own honest declines "
+        f'{drug_note} Rows marked "no" are the backend\'s own honest declines '
         "(auto-dispatch floor n<200 / m<400, or a NO_AUTO_DISPATCH function) and "
         "are expected to tie.",
         "",
@@ -198,7 +197,7 @@ def t3_section(t3_json: Path | None) -> list[str]:
         f"Graph: **{prov['source']}** "
         f"({prov['nodes']:,} nodes / {prov['edges']:,} edges, largest SCC); "
         f"centrality subgraph n={data['centrality_subgraph']['nodes']:,}. "
-        "Stock arm = `orig_func`, backend arm = `backend=\"rustworkx\"` with a "
+        'Stock arm = `orig_func`, backend arm = `backend="rustworkx"` with a '
         "dispatch counter asserting every call.",
         "",
         "| workload | NetworkX | rustworkx | speedup | parity |",
@@ -226,9 +225,7 @@ def main() -> int:
     parser.add_argument("--t1", type=Path, default=None)
     parser.add_argument("--t2", type=Path, default=None)
     parser.add_argument("--t3", type=Path, default=None)
-    parser.add_argument(
-        "--out", type=Path, default=Path(__file__).resolve().parent / "RESULTS.md"
-    )
+    parser.add_argument("--out", type=Path, default=Path(__file__).resolve().parent / "RESULTS.md")
     args = parser.parse_args()
 
     machine = None
@@ -274,7 +271,7 @@ def main() -> int:
         "",
         "- Auto-dispatch declines graphs with n<200 or m<400 "
         "(`nx.config.backends.rustworkx.min_nodes/min_edges`) and 22 functions are "
-        "never auto-selected; an explicit `backend=\"rustworkx\"` bypasses only "
+        'never auto-selected; an explicit `backend="rustworkx"` bypasses only '
         "the size floor. MultiGraph/MultiDiGraph and weighted betweenness always "
         "fall back to NetworkX.",
         "- T1 cells time a single cold call (conversion included); T2 cells are "
