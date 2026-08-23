@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="The 105 NetworkX algorithms supported by nx-rustworkx, with compatibility notes.">
+    <meta name="description" content="The 110 NetworkX algorithms supported by nx-rustworkx, with compatibility notes.">
     <meta name="theme-color" content="#ffffff">
     <meta property="og:type" content="website">
     <meta property="og:title" content="nx-rustworkx algorithm reference">
@@ -31,7 +31,7 @@
       <h1>Algorithms</h1>
 
       <p>
-        The backend implements 105 NetworkX algorithms plus constructors and
+        The backend implements 110 NetworkX algorithms plus constructors and
         generators for rustworkx-backed graphs. Anything outside this list
         stays on NetworkX when the input is still an ordinary NetworkX graph.
       </p>
@@ -50,6 +50,7 @@
             <tr><th scope="row">Negative cycles</th><td><code>negative_edge_cycle</code>, <code>find_negative_cycle</code></td></tr>
             <tr><th scope="row">DAG</th><td><code>is_directed_acyclic_graph</code>, <code>topological_sort</code>, <code>topological_generations</code>, <code>ancestors</code>, <code>descendants</code>, <code>descendants_at_distance</code>, <code>dag_longest_path</code>, <code>dag_longest_path_length</code>, <code>transitive_reduction</code>, <code>immediate_dominators</code>, <code>dominance_frontiers</code></td></tr>
             <tr><th scope="row">Traversal</th><td><code>dfs_edges</code>, <code>bfs_layers</code></td></tr>
+            <tr><th scope="row">Distance measures</th><td><code>eccentricity</code>, <code>diameter</code>, <code>radius</code>, <code>center</code>, <code>periphery</code></td></tr>
             <tr><th scope="row">Connectivity</th><td><code>is_connected</code>, <code>is_weakly_connected</code>, <code>is_strongly_connected</code>, <code>is_semiconnected</code>, <code>connected_components</code>, <code>weakly_connected_components</code>, <code>strongly_connected_components</code>, <code>number_connected_components</code>, <code>number_weakly_connected_components</code>, <code>number_strongly_connected_components</code>, <code>node_connected_component</code>, <code>articulation_points</code>, <code>bridges</code>, <code>biconnected_components</code>, <code>condensation</code>, <code>stoer_wagner</code></td></tr>
             <tr><th scope="row">Cycles and cores</th><td><code>simple_cycles</code>, <code>cycle_basis</code>, <code>find_cycle</code>, <code>chain_decomposition</code>, <code>core_number</code></td></tr>
             <tr><th scope="row">Structure</th><td><code>is_bipartite</code>, <code>is_planar</code>, <code>isolates</code>, <code>number_of_isolates</code>, <code>transitivity</code></td></tr>
@@ -91,6 +92,15 @@
         for them. Random generators with an explicit <code>seed</code> fall
         back to NetworkX's sampler by default; see
         <a href="usage.html#seeded">seeded random generators</a>.
+      </p>
+
+      <p>
+        The eccentricity family computes rustworkx's all-pairs distance
+        matrix, which is quadratic in memory. Automatic dispatch declines it
+        past ~4096 nodes (a ~134&nbsp;MB matrix);
+        <code>backend="rustworkx"</code> runs anyway, accepting the memory
+        cost. A single-node <code>eccentricity</code> request computes
+        per-source lengths instead and has no such gate.
       </p>
 
       <h2 id="limits">Compatibility limits</h2>

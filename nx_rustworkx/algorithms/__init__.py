@@ -12,6 +12,7 @@ from nx_rustworkx.algorithms import (
     core,
     cycles,
     dag,
+    distance_measures,
     isomorphism,
     link_analysis,
     matching,
@@ -28,6 +29,7 @@ from nx_rustworkx.algorithms.connectivity import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.core import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.cycles import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.dag import *  # noqa: F401,F403
+from nx_rustworkx.algorithms.distance_measures import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.isomorphism import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.link_analysis import *  # noqa: F401,F403
 from nx_rustworkx.algorithms.matching import *  # noqa: F401,F403
@@ -45,6 +47,7 @@ _MODULES = (
     core,
     cycles,
     dag,
+    distance_measures,
     isomorphism,
     link_analysis,
     matching,
