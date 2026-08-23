@@ -235,6 +235,73 @@ def test_add_nodes_from_applies_shared_and_per_node_attrs():
     assert G.nodes["b"] == {"kind": "node", "color": "blue"}
 
 
+def test_copy_gives_independent_attribute_dicts():
+    # NetworkX's copy is independent at the dict level: writing through the
+    # copy never shows up in the original.
+    G = rustworkx_graph()
+    G.add_node(1, color="red")
+    G.add_edge(1, 2, weight=3)
+    H = G.copy()
+    H.nodes[1]["color"] = "blue"
+    H.get_edge_data(1, 2)["weight"] = 99
+    assert G.nodes[1] == {"color": "red"}
+    assert G.get_edge_data(1, 2) == {"weight": 3}
+
+
+def test_multigraph_copy_gives_independent_node_dicts():
+    from nx_rustworkx.graph import RustworkxMultiGraph
+
+    G = RustworkxMultiGraph.empty()
+    G.add_node(1, color="red")
+    G.add_edge(1, 2, weight=3)
+    H = G.copy()
+    H.nodes[1]["color"] = "blue"
+    H.get_edge_data(1, 2, 0)["weight"] = 99
+    assert G.nodes[1] == {"color": "red"}
+    assert G.get_edge_data(1, 2, 0) == {"weight": 3}
+
+
+def test_to_directed_gives_each_direction_its_own_dict():
+    G = rustworkx_graph()
+    G.add_node(1, color="red")
+    G.add_edge(1, 2, weight=3)
+    D = G.to_directed()
+    D.get_edge_data(1, 2)["weight"] = 99
+    D.nodes[1]["color"] = "blue"
+    assert G.get_edge_data(1, 2) == {"weight": 3}
+    assert D.get_edge_data(2, 1) == {"weight": 3}
+    assert G.nodes[1] == {"color": "red"}
+
+
+def test_to_undirected_merges_reciprocal_edges_like_networkx():
+    build = [((1, 2), {"w": 1, "only_fwd": True}), ((2, 1), {"w": 9})]
+    G = rustworkx_graph(directed=True)
+    H = nx.DiGraph()
+    for (u, v), data in build:
+        G.add_edge(u, v, **data)
+        H.add_edge(u, v, **data)
+    U = G.to_undirected()
+    expected = H.to_undirected()
+    assert U.get_edge_data(1, 2) == expected[1][2] == {"w": 9, "only_fwd": True}
+    assert U.number_of_edges() == expected.number_of_edges() == 1
+    # The merged dict is the undirected graph's own.
+    U.get_edge_data(1, 2)["w"] = 5
+    assert G.get_edge_data(2, 1) == {"w": 9}
+
+
+def test_constructing_from_a_wrapper_still_copies_it():
+    source = rustworkx_graph()
+    source.add_node(1, color="red")
+    source.add_edge(1, 2, weight=3)
+    built = RustworkxGraph.from_incoming(source)
+    built.add_edge(2, 3)
+    built.nodes[1]["color"] = "blue"
+    built.get_edge_data(1, 2)["weight"] = 99
+    assert not source.has_edge(2, 3)
+    assert source.nodes[1] == {"color": "red"}
+    assert source.get_edge_data(1, 2) == {"weight": 3}
+
+
 def test_node_attributes_follow_copies_and_orientation():
     G = nx.empty_graph(0, backend="rustworkx")
     G.add_node(1, color="red")
