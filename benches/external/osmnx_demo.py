@@ -1,10 +1,12 @@
 #!/usr/bin/env python3
 """Real-world demo: route and analyze a city street network, NX vs rustworkx.
 
-OSMnx models cities as MultiDiGraphs, which this backend always rejects, so
-the demo applies the one line the official NetworkX gallery example also uses:
-``ox.convert.to_digraph(G, weight="travel_time")``. On that DiGraph it times
-stock NetworkX (via each function's ``orig_func``) against forced
+OSMnx models cities as MultiDiGraphs: two distinct ways between the same pair
+of intersections are two parallel edges with their own length and speed. The
+backend routes that MultiDiGraph directly with NetworkX's parallel-edge rules
+(the lightest way wins a route, betweenness collapses a bundle to one path,
+pagerank sums the bundle), so no ``ox.convert.to_digraph`` step is needed. The
+demo times stock NetworkX (via each function's ``orig_func``) against forced
 ``backend="rustworkx"`` calls for:
 
 - a batch of weighted point-to-point ``nx.shortest_path`` queries (the
@@ -48,55 +50,58 @@ def time_once(fn):
     return time.perf_counter() - start, result
 
 
-def synthetic_city(n: int, seed: int) -> nx.DiGraph:
-    """Road-network-like DiGraph: geometric layout, reciprocal weighted edges."""
+#: Share of synthetic road segments that get a second, parallel way.
+PARALLEL_WAY_SHARE = 0.08
+
+
+def synthetic_city(n: int, seed: int) -> nx.MultiDiGraph:
+    """Road-network-like MultiDiGraph: geometric layout, reciprocal weighted edges.
+
+    Like an OSMnx drive network, a share of the segments carries a second,
+    parallel way (a service road, a slower alternative alignment) between the
+    same two intersections, so routing has to pick the lighter of a bundle.
+    """
     radius = math.sqrt(7 / (math.pi * n))  # ~7 expected neighbors
     G = nx.random_geometric_graph(n, radius, seed=seed)
     G = G.subgraph(max(nx.connected_components(G), key=len))
     pos = nx.get_node_attributes(G, "pos")
     rng = random.Random(seed)
-    D = nx.DiGraph()
+    D = nx.MultiDiGraph()
     for u, v in G.edges():
         meters = math.dist(pos[u], pos[v]) * 20_000  # ~20 km city extent
-        speed_ms = rng.choice([30, 40, 50, 60, 80]) / 3.6
-        seconds = meters / speed_ms
-        D.add_edge(u, v, travel_time=seconds, length=meters)
-        D.add_edge(v, u, travel_time=seconds, length=meters)
+        ways = 2 if rng.random() < PARALLEL_WAY_SHARE else 1
+        for way in range(ways):
+            detour = 1.0 + 0.3 * way * rng.random()  # the alternate way is longer
+            length = meters * detour
+            speed_ms = rng.choice([30, 40, 50, 60, 80]) / 3.6
+            seconds = length / speed_ms
+            D.add_edge(u, v, travel_time=seconds, length=length)
+            D.add_edge(v, u, travel_time=seconds, length=length)
     return D
 
 
-def multidigraph_to_digraph(G, weight: str) -> nx.DiGraph:
-    """Collapse parallel edges keeping the minimum-weight one (osmnx-free)."""
-    D = nx.DiGraph()
-    D.add_nodes_from(G.nodes(data=True))
-    for u, v, data in G.edges(data=True):
-        w = float(data.get(weight, math.inf))
-        if not D.has_edge(u, v) or w < float(D[u][v][weight]):
-            D.add_edge(u, v, **{**data, weight: w})
-    return D
-
-
-def from_osmnx_graph(G) -> nx.DiGraph:
+def from_osmnx_graph(G) -> nx.MultiDiGraph:
     # osmnx is a demo-only dependency, absent from the lint environment.
     import osmnx as ox  # pyright: ignore[reportMissingImports]
 
     G = ox.routing.add_edge_speeds(G)
-    G = ox.routing.add_edge_travel_times(G)
-    convert = getattr(ox, "convert", None)
-    if convert is not None and hasattr(convert, "to_digraph"):
-        return convert.to_digraph(G, weight="travel_time")
-    return multidigraph_to_digraph(G, "travel_time")
+    return ox.routing.add_edge_travel_times(G)
 
 
-def load_graphml(path: Path) -> nx.DiGraph:
+def load_graphml(path: Path) -> nx.MultiDiGraph:
     G = nx.read_graphml(path, force_multigraph=True)
     for _, _, data in G.edges(data=True):
         if "travel_time" in data:
             data["travel_time"] = float(data["travel_time"])
-    return multidigraph_to_digraph(G, "travel_time")
+    return G
 
 
-def acquire(args) -> tuple[nx.DiGraph, dict]:
+def parallel_bundles(G) -> int:
+    """Number of (u, v) pairs joined by more than one way."""
+    return sum(1 for u in G for v in G[u] if len(G[u][v]) > 1)
+
+
+def acquire(args) -> tuple[nx.MultiDiGraph, dict]:
     if args.graphml:
         return load_graphml(Path(args.graphml)), {"source": "graphml", "path": args.graphml}
     if not args.synthetic:
@@ -124,7 +129,7 @@ def acquire(args) -> tuple[nx.DiGraph, dict]:
     return D, {"source": "synthetic", "nodes_requested": args.synthetic_nodes}
 
 
-def bfs_ball(D: nx.DiGraph, start, cap: int) -> nx.DiGraph:
+def bfs_ball(D: nx.MultiDiGraph, start, cap: int) -> nx.MultiDiGraph:
     U = D.to_undirected(as_view=True)
     seen = {start}
     queue = deque([start])
@@ -139,8 +144,9 @@ def bfs_ball(D: nx.DiGraph, start, cap: int) -> nx.DiGraph:
     return D.subgraph(seen).copy()
 
 
-def route_cost(D: nx.DiGraph, path: list) -> float:
-    return sum(D[u][v]["travel_time"] for u, v in zip(path, path[1:]))
+def route_cost(D: nx.MultiDiGraph, path: list) -> float:
+    """Travel time along ``path``, taking the lighter way of every bundle."""
+    return sum(min(d["travel_time"] for d in D[u][v].values()) for u, v in zip(path, path[1:]))
 
 
 def main() -> int:
@@ -163,7 +169,13 @@ def main() -> int:
     # Route within the largest strongly connected component so every seeded
     # origin/destination pair is reachable.
     D = D.subgraph(max(nx.strongly_connected_components.orig_func(D), key=len)).copy()
-    provenance.update(nodes=D.number_of_nodes(), edges=D.number_of_edges())
+    assert D.is_multigraph(), "the demo routes the MultiDiGraph as OSMnx hands it over"
+    provenance.update(
+        graph_type=type(D).__name__,
+        nodes=D.number_of_nodes(),
+        edges=D.number_of_edges(),
+        parallel_bundles=parallel_bundles(D),
+    )
     log(f"graph ready: {provenance}")
 
     rng = random.Random(args.seed)
@@ -256,8 +268,9 @@ def main() -> int:
         "machine": _common.machine_info(),
         "workloads": workloads,
         "notes": [
-            "OSMnx MultiDiGraphs never dispatch; the one required line is "
-            "ox.convert.to_digraph(G, weight='travel_time')",
+            "both arms route the MultiDiGraph directly: the backend keeps every "
+            "parallel way and follows NetworkX's parallel-edge rules (lightest way "
+            "for routing, collapsed bundles for betweenness, summed for pagerank)",
             "backend arm uses explicit backend='rustworkx'; the stock arm "
             "calls each function's orig_func",
             "first shortest_path call includes nx->rustworkx conversion; "

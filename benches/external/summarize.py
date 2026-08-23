@@ -194,8 +194,14 @@ def t3_section(t3_json: Path | None) -> list[str]:
         return [*lines, "_no results captured_", ""]
     prov = data["provenance"]
     lines += [
-        f"Graph: **{prov['source']}** "
-        f"({prov['nodes']:,} nodes / {prov['edges']:,} edges, largest SCC); "
+        f"Graph: **{prov['source']}** {prov.get('graph_type', 'DiGraph')} "
+        f"({prov['nodes']:,} nodes / {prov['edges']:,} edges"
+        + (
+            f", {prov['parallel_bundles']:,} parallel-way bundles"
+            if prov.get("parallel_bundles")
+            else ""
+        )
+        + ", largest SCC); "
         f"centrality subgraph n={data['centrality_subgraph']['nodes']:,}. "
         'Stock arm = `orig_func`, backend arm = `backend="rustworkx"` with a '
         "dispatch counter asserting every call.",
@@ -272,8 +278,9 @@ def main() -> int:
         "- Auto-dispatch declines graphs with n<200 or m<400 "
         "(`nx.config.backends.rustworkx.min_nodes/min_edges`) and 22 functions are "
         'never auto-selected; an explicit `backend="rustworkx"` bypasses only '
-        "the size floor. MultiGraph/MultiDiGraph and weighted betweenness always "
-        "fall back to NetworkX.",
+        "the size floor. Weighted betweenness always falls back to NetworkX; "
+        "MultiGraph/MultiDiGraph dispatch with NetworkX's parallel-edge rules "
+        "except for the functions NetworkX itself refuses on them.",
         "- T1 cells time a single cold call (conversion included); T2 cells are "
         "asv medians where NetworkX's conversion cache (default on since 3.4) "
         "amortizes conversion; T3 reports both cold and steady-state routing.",
