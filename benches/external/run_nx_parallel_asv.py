@@ -110,14 +110,14 @@ def main() -> int:
     _common.patch_file(
         suite / "benchmarks" / "benchmarks" / "common.py", patches, "nx-parallel"
     )
-    # Upstream bug at the pinned rev: both component-benchmark setups pass
-    # seed= to get_cached_gnp_random_graph, which has no such kwarg (the
-    # module-global seed is used internally), so they fail on every backend
-    # including stock NetworkX. Drop the bogus kwarg.
+    # Upstream bug at the pinned rev: the Attracting/StronglyConnected/
+    # WeaklyConnected setups pass seed= to get_cached_gnp_random_graph, which
+    # has no such kwarg (the module-global seed is used internally), so they
+    # fail on every backend including stock NetworkX. Drop the bogus kwarg.
     _common.patch_file(
         suite / "benchmarks" / "benchmarks" / "bench_components.py",
         [("num_nodes, edge_prob, seed=seed, is_directed=True",
-          "num_nodes, edge_prob, is_directed=True", 2)],
+          "num_nodes, edge_prob, is_directed=True", 3)],
         "fix upstream seed kwarg bug",
     )
 
