@@ -6,7 +6,7 @@ import networkx as nx
 import pytest
 
 from nx_rustworkx.convert import convert_from_nx, convert_to_nx, rustworkx_graph_to_nx
-from nx_rustworkx.graph import RustworkxGraph
+from nx_rustworkx.graph import RustworkxGraph, RustworkxMultiGraph
 
 
 def test_string_nodes_and_isolates():
@@ -84,3 +84,74 @@ def test_index_map_is_dense(nodes):
     rwg = convert_from_nx(G)
     assert list(rwg.rx_graph.node_indices()) == list(range(len(nodes)))
     assert [rwg.index_to_node[i] for i in range(len(nodes))] == list(G)
+
+
+def _multigraph_fixture(cls):
+    M = cls(name="multi")
+    M.add_edge(0, 1, weight=3)
+    M.add_edge(0, 1, weight=1)
+    M.add_edge(1, 1)
+    M.add_edge(1, 1, key="loop")
+    M.add_edge(2, 3, key="k", color="red", key_=5)
+    M.add_node(9, tag="iso")
+    M.nodes[0]["n"] = 1
+    return M
+
+
+def test_multigraph_conversion_keeps_parallel_edges_and_keys():
+    M = _multigraph_fixture(nx.MultiGraph)
+    rwg = convert_from_nx(M, preserve_all_attrs=True)
+    assert isinstance(rwg, RustworkxMultiGraph)
+    assert rwg.is_multigraph()
+    assert rwg.rx_graph.multigraph
+    assert rwg.number_of_edges() == 5
+    assert set(rwg.edge_keys) == set(rwg.rx_graph.edge_indices())
+    assert sorted(map(str, rwg.edge_keys.values())) == ["0", "0", "1", "k", "loop"]
+    one = rwg.node_to_index[1]
+    # The self-loop bundle is stored once per key, not once per adjacency side.
+    assert len(rwg.rx_graph.edge_indices_from_endpoints(one, one)) == 2
+    payloads = rwg.rx_graph.get_all_edge_data(rwg.node_to_index[0], one)
+    assert sorted(p["weight"] for p in payloads) == [1, 3]
+
+
+def test_multidigraph_conversion_keeps_orientation_and_keys():
+    D = nx.MultiDiGraph([(0, 1, {}), (0, 1, {}), (1, 0, {})])
+    rwg = convert_from_nx(D)
+    assert rwg.is_directed() and rwg.is_multigraph()
+    zero, one = rwg.node_to_index[0], rwg.node_to_index[1]
+    assert len(rwg.rx_graph.edge_indices_from_endpoints(zero, one)) == 2
+    assert len(rwg.rx_graph.edge_indices_from_endpoints(one, zero)) == 1
+    assert sorted(rwg.edge_keys.values()) == [0, 0, 1]
+
+
+@pytest.mark.parametrize("cls", [nx.MultiGraph, nx.MultiDiGraph])
+def test_multigraph_round_trip_is_strictly_equal(cls):
+    M = _multigraph_fixture(cls)
+    back = convert_to_nx(convert_from_nx(M, preserve_all_attrs=True))
+    assert type(back) is cls
+    assert back._adj == M._adj
+    assert back._node == M._node
+    assert back.graph == M.graph
+
+
+def test_multigraph_edge_attrs_filter_applies_per_key():
+    M = _multigraph_fixture(nx.MultiGraph)
+    rwg = convert_from_nx(M, edge_attrs={"weight": 1})
+    payloads = [data for _u, _v, data in rwg.rx_graph.weighted_edge_list()]
+    assert all(set(data) == {"weight"} for data in payloads)
+    assert sorted(data["weight"] for data in payloads) == [1, 1, 1, 1, 3]
+
+
+def test_multigraph_conversion_copies_payloads():
+    M = nx.MultiGraph()
+    M.add_edge(0, 1, weight=1)
+    rwg = convert_from_nx(M, preserve_edge_attrs=True)
+    rwg.rx_graph.get_edge_data_by_index(0)["weight"] = 99
+    assert M[0][1][0]["weight"] == 1
+
+
+def test_simple_wrapper_has_no_edge_keys():
+    rwg = convert_from_nx(nx.path_graph(3))
+    assert type(rwg) is RustworkxGraph
+    assert rwg.edge_keys is None
+    assert not rwg.rx_graph.multigraph

@@ -5,18 +5,9 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
-from nx_rustworkx.algorithms._utils import as_rw_graph, reject_multigraph
+from nx_rustworkx.algorithms._utils import as_rw_graph
 
 __all__ = ["complement", "cartesian_product", "line_graph", "tensor_product"]
-
-
-def _can_run(G, *args, **kwargs):
-    for graph in (G, *args):
-        if hasattr(graph, "is_multigraph"):
-            reason = reject_multigraph(graph)
-            if reason:
-                return reason
-    return True
 
 
 def complement(G):
@@ -32,9 +23,6 @@ def complement(G):
     index_to_node = rwg.index_to_node
     out.add_edges_from((index_to_node[u], index_to_node[v]) for u, v in complemented.edge_list())
     return out
-
-
-complement.can_run = _can_run
 
 
 def _product(G, H, kernel):
@@ -57,21 +45,12 @@ def cartesian_product(G, H):
     return _product(G, H, rx.cartesian_product)
 
 
-cartesian_product.can_run = _can_run
-
-
 def tensor_product(G, H):
     """Return the tensor product of two graphs via rustworkx."""
     return _product(G, H, rx.tensor_product)
 
 
-tensor_product.can_run = _can_run
-
-
 def _can_run_line_graph(G, create_using=None, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if G.is_directed():
         return "not implemented for directed type"
     if create_using is not None:
@@ -93,6 +72,21 @@ def line_graph(G, create_using=None):
     edge_index_map = rwg.rx_graph.edge_index_map()
     index_to_node = rwg.index_to_node
 
+    if rwg.is_multigraph():
+        # NetworkX names the line nodes (u, v, key) and returns a MultiGraph;
+        # rustworkx lists a pair of parallel edges once per shared endpoint,
+        # so collapse those duplicates.
+        edge_keys = rwg.edge_keys
+        line_nodes = {}
+        for line_index, edge_index in node_map.items():
+            u, v, _data = edge_index_map[edge_index]
+            line_nodes[line_index] = (index_to_node[u], index_to_node[v], edge_keys[edge_index])
+        out = nx.MultiGraph()
+        out.add_nodes_from(line_nodes.values())
+        pairs = {(a, b) if a < b else (b, a) for a, b in line.edge_list()}
+        out.add_edges_from((line_nodes[a], line_nodes[b]) for a, b in sorted(pairs))
+        return out
+
     line_nodes = {}
     for line_index, edge_index in node_map.items():
         u, v, _data = edge_index_map[edge_index]
@@ -105,3 +99,4 @@ def line_graph(G, create_using=None):
 
 
 line_graph.can_run = _can_run_line_graph
+line_graph.multigraph = True

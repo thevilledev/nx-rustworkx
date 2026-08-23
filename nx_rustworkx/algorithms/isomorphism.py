@@ -5,7 +5,7 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
-from nx_rustworkx.algorithms._utils import as_rw_graph, reject_multigraph
+from nx_rustworkx.algorithms._utils import as_rw_graph
 
 __all__ = [
     "is_isomorphic",
@@ -16,11 +16,7 @@ __all__ = [
 
 
 def _can_run_isomorphic(G1, G2, node_match=None, edge_match=None, **kwargs):
-    _ = kwargs
-    for graph in (G1, G2):
-        reason = reject_multigraph(graph)
-        if reason:
-            return reason
+    _ = G1, G2, kwargs
     if node_match is not None or edge_match is not None:
         return "nx-rustworkx is_isomorphic is structural only in v0.1"
     return True
@@ -47,14 +43,11 @@ def is_isomorphic(G1, G2, node_match=None, edge_match=None):
 
 
 is_isomorphic.can_run = _can_run_isomorphic
+is_isomorphic.multigraph = True
 
 
 def _can_run_vf2pp(G1, G2, node_label=None, default_label=None, **kwargs):
-    _ = default_label
-    for graph in (G1, G2):
-        reason = reject_multigraph(graph)
-        if reason:
-            return reason
+    _ = G1, G2, default_label
     if node_label is not None:
         return "nx-rustworkx vf2pp_is_isomorphic is structural only"
     return True
@@ -67,6 +60,7 @@ def vf2pp_is_isomorphic(G1, G2, node_label=None, default_label=None):
 
 
 vf2pp_is_isomorphic.can_run = _can_run_vf2pp
+vf2pp_is_isomorphic.multigraph = True
 
 
 def _vf2_mappings(G1, G2):
@@ -98,6 +92,7 @@ def vf2pp_isomorphism(G1, G2, node_label=None, default_label=None):
 
 
 vf2pp_isomorphism.can_run = _can_run_vf2pp
+vf2pp_isomorphism.multigraph = True
 
 
 def vf2pp_all_isomorphisms(G1, G2, node_label=None, default_label=None):

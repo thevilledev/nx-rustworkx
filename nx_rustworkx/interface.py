@@ -8,6 +8,7 @@ from nx_rustworkx.algorithms._utils import (
     NO_AUTO_DISPATCH_REASON,
     default_can_run,
     default_should_run,
+    multigraph_reason,
 )
 from nx_rustworkx.convert import convert_from_nx, convert_to_nx
 
@@ -25,6 +26,14 @@ class BackendInterface:
         func = getattr(cls, name, None)
         if func is None:
             return False
+        # Multigraph support is opt-in per function (``func.multigraph = True``),
+        # declared only where the kernel reproduces NetworkX's parallel-edge
+        # semantics. The gate runs first so refused multigraphs never reach a
+        # checker that indexes ``G.adj[u][v]`` expecting an attribute dict.
+        if not getattr(func, "multigraph", False):
+            reason = multigraph_reason(name, args, kwargs)
+            if reason is not None:
+                return reason
         checker = getattr(func, "can_run", None)
         if checker is None:
             return default_can_run(*args, **kwargs)

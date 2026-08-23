@@ -138,9 +138,16 @@ def test_fallback_to_nx_for_unimplemented(restore_nx_config):
 
 
 @needs_class_dispatch
-def test_multigraph_constructor_rejected():
-    with pytest.raises(NotImplementedError):
-        nx.MultiGraph(backend="rustworkx")
+def test_multigraph_constructor_returns_backend_multigraph():
+    from nx_rustworkx.graph import RustworkxMultiGraph
+
+    G = nx.MultiGraph(backend="rustworkx")
+    assert isinstance(G, RustworkxMultiGraph)
+    assert G.is_multigraph() and not G.is_directed()
+    D = nx.MultiDiGraph([(0, 1), (0, 1), (1, 0)], name="d", backend="rustworkx")
+    assert isinstance(D, RustworkxMultiGraph) and D.is_directed()
+    assert D.number_of_edges() == 3 and D.number_of_edges(0, 1) == 2
+    assert D.graph["name"] == "d"
 
 
 def test_constructed_graph_matches_networkx_betweenness():

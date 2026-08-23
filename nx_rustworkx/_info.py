@@ -5,6 +5,14 @@ _CONVERTED = (
     "the result to the original node IDs."
 )
 _NO_MULTIGRAPH = "MultiGraph and MultiDiGraph inputs fall back to NetworkX."
+_MULTI_COLLAPSED = (
+    "On a multigraph parallel edges are collapsed before the kernel runs, "
+    "matching NetworkX, which never counts a path twice for them."
+)
+_MULTI_KEYED = (
+    "On a multigraph the result carries NetworkX's edge keys and picks the "
+    "lightest edge of every parallel bundle, as NetworkX does."
+)
 _NO_CALLABLE_WEIGHT = "Callable ``weight`` arguments fall back to NetworkX."
 _NO_CUTOFF = "``cutoff`` falls back to NetworkX."
 _TIE_BREAK = (
@@ -22,8 +30,15 @@ _ECC_EXTREMES = (
 #: name -> the caveats that apply on top of ``_CONVERTED``.
 _FUNCTIONS = {
     # --- centrality -------------------------------------------------------
-    "betweenness_centrality": ["Unweighted Brandes only; ``k`` sampling falls back."],
-    "edge_betweenness_centrality": ["Unweighted only; ``k`` sampling falls back."],
+    "betweenness_centrality": [
+        "Unweighted Brandes only; ``k`` sampling falls back.",
+        _MULTI_COLLAPSED,
+    ],
+    "edge_betweenness_centrality": [
+        "Unweighted only; ``k`` sampling falls back.",
+        _MULTI_COLLAPSED + " On a multigraph the result is keyed ``(u, v, key)`` with each pair's"
+        " score split equally over its parallel edges, as NetworkX does.",
+    ],
     "closeness_centrality": [
         "A string ``distance`` runs rustworkx's weighted kernel; callable "
         "``distance`` falls back to NetworkX."
@@ -42,7 +57,8 @@ _FUNCTIONS = {
     "katz_centrality_numpy": ["Always L2-normalized, so ``normalized=False`` falls back."],
     "hits": ["Undirected edges are counted in both directions, as NetworkX does."],
     "group_betweenness_centrality": [
-        "Unweighted only; ``weight`` and ``endpoints`` fall back to NetworkX."
+        "Unweighted only; ``weight`` and ``endpoints`` fall back to NetworkX.",
+        _MULTI_COLLAPSED,
     ],
     "group_closeness_centrality": ["Unweighted only; ``weight`` falls back to NetworkX."],
     "group_degree_centrality": [],
@@ -72,11 +88,17 @@ _FUNCTIONS = {
     "all_pairs_bellman_ford_path_length": [],
     "all_pairs_shortest_path": [_NO_CUTOFF],
     "all_pairs_shortest_path_length": [_NO_CUTOFF],
-    "all_shortest_paths": ["Only the ``dijkstra`` method; ``bellman-ford`` falls back."],
+    "all_shortest_paths": [
+        "Only the ``dijkstra`` method; ``bellman-ford`` falls back.",
+        "On a multigraph each node path is reported once, as NetworkX does, "
+        "rather than once per equal-weight parallel edge.",
+    ],
     "single_source_all_shortest_paths": [
         "Only the ``dijkstra`` method; ``bellman-ford`` falls back.",
         "Conversion covers the whole graph, so NetworkX wins when only a "
         "small component is reachable from the source.",
+        "On a multigraph each node path is reported once, as NetworkX does, "
+        "rather than once per equal-weight parallel edge.",
     ],
     "dijkstra_path": [],
     "dijkstra_path_length": [],
@@ -152,9 +174,13 @@ _FUNCTIONS = {
     "number_weakly_connected_components": ["Directed graphs only."],
     "strongly_connected_components": ["Directed graphs only."],
     "number_strongly_connected_components": ["Directed graphs only."],
-    "articulation_points": ["Undirected graphs only."],
-    "bridges": ["Undirected graphs only."],
-    "biconnected_components": ["Undirected graphs only."],
+    "articulation_points": ["Undirected graphs only.", _MULTI_COLLAPSED],
+    "bridges": [
+        "Undirected graphs only.",
+        "On a multigraph a pair joined by parallel edges is never a bridge, as "
+        "NetworkX defines it.",
+    ],
+    "biconnected_components": ["Undirected graphs only.", _MULTI_COLLAPSED],
     "condensation": [
         "Returns a NetworkX DiGraph with the ``members`` attribute and graph "
         "``mapping``. Component numbering follows rustworkx's component order.",
@@ -173,6 +199,8 @@ _FUNCTIONS = {
     "find_cycle": [
         "Directed graphs only; ``orientation`` falls back to NetworkX.",
         _TIE_BREAK,
+        "On a multigraph the edges carry the first key of each pair, as "
+        "NetworkX's edge_dfs reports them.",
     ],
     "chain_decomposition": [
         "Undirected graphs only.",
@@ -187,7 +215,10 @@ _FUNCTIONS = {
         "colors, so a component may be colored oppositely to NetworkX's choice.",
     ],
     "is_bipartite": [],
-    "is_planar": ["Directed input is checked on its undirected form, as NetworkX does."],
+    "is_planar": [
+        "Directed input is checked on its undirected form, as NetworkX does; "
+        "parallel edges do not affect planarity."
+    ],
     "isolates": [],
     "number_of_isolates": [],
     "transitivity": [],
@@ -206,19 +237,23 @@ _FUNCTIONS = {
         "while using the same strategy.",
     ],
     "minimum_spanning_tree": [
-        "Undirected graphs only. Returns a NetworkX Graph.",
+        "Undirected graphs only. Returns a NetworkX Graph, or a MultiGraph for multigraph input.",
         "rustworkx always runs Kruskal's algorithm. A minimum spanning forest is "
         "not unique when weights tie, so the edges may differ from NetworkX's "
         "while the total weight matches.",
-        "``ignore_nan`` falls back to NetworkX.",
+        "``ignore_nan`` falls back to NetworkX, as does ``algorithm='boruvka'`` on a multigraph.",
+        _MULTI_KEYED,
     ],
     "minimum_spanning_edges": [
         "Undirected graphs only; same tie-breaking note as ``minimum_spanning_tree``.",
-        "``ignore_nan`` falls back to NetworkX.",
+        "``ignore_nan`` falls back to NetworkX, as does ``algorithm='boruvka'`` on a multigraph.",
+        _MULTI_KEYED,
     ],
     "steiner_tree": [
-        "Undirected graphs only. Returns a NetworkX Graph built by rustworkx's "
-        "Kou approximation; other ``method`` values fall back to NetworkX."
+        "Undirected graphs only. Returns a NetworkX Graph (a MultiGraph for "
+        "multigraph input) built by rustworkx's Kou approximation; other "
+        "``method`` values fall back to NetworkX.",
+        _MULTI_KEYED,
     ],
     "metric_closure": [
         "Undirected connected graphs only. Returns a NetworkX Graph whose "
@@ -230,7 +265,9 @@ _FUNCTIONS = {
     "cartesian_product": ["Returns a NetworkX graph; node and edge attributes are dropped."],
     "tensor_product": ["Returns a NetworkX graph; node and edge attributes are dropped."],
     "line_graph": [
-        "Undirected graphs only; ``create_using`` falls back to NetworkX. Returns a NetworkX Graph."
+        "Undirected graphs only; ``create_using`` falls back to NetworkX. Returns a "
+        "NetworkX Graph, or a MultiGraph whose nodes are ``(u, v, key)`` for "
+        "multigraph input, as NetworkX does."
     ],
     "all_simple_paths": [
         "With a collection of targets, paths arrive grouped by target rather "
@@ -275,10 +312,22 @@ _GENERATORS = {
     "digraph__new__": (
         "Returns a rustworkx-backed digraph so later algorithm calls skip conversion."
     ),
-    "empty_graph": (
-        "Constructs a rustworkx-backed empty graph. MultiGraph create_using is rejected."
+    "multigraph__new__": (
+        "Returns a rustworkx-backed multigraph with NetworkX's edge keys so later "
+        "algorithm calls skip conversion."
     ),
-    "from_edgelist": "Constructs a rustworkx-backed graph from an edgelist.",
+    "multidigraph__new__": (
+        "Returns a rustworkx-backed directed multigraph with NetworkX's edge keys "
+        "so later algorithm calls skip conversion."
+    ),
+    "empty_graph": (
+        "Constructs a rustworkx-backed empty graph; a MultiGraph or MultiDiGraph "
+        "``create_using`` yields a rustworkx-backed multigraph."
+    ),
+    "from_edgelist": (
+        "Constructs a rustworkx-backed graph from an edgelist; a multigraph "
+        "``create_using`` keeps every listed edge with NetworkX's key rules."
+    ),
     "path_graph": _NATIVE_EXACT,
     "cycle_graph": _NATIVE_EXACT,
     "star_graph": _NATIVE_EXACT,
@@ -319,13 +368,47 @@ _GENERATORS = {
 }
 
 
-def _docs(notes):
-    return " ".join([_CONVERTED, _NO_MULTIGRAPH, *notes])
+#: Functions that decline MultiGraph and MultiDiGraph inputs. Everything else
+#: accepts them with NetworkX's parallel-edge semantics. The backend gate reads
+#: each function's ``multigraph`` attribute; tests/test_multigraph.py asserts
+#: this set mirrors those attributes, since this module cannot import the kernels.
+_MULTIGRAPH_REFUSED = frozenset(
+    {
+        # NetworkX raises NetworkXNotImplemented for multigraphs itself.
+        "chain_decomposition",
+        "core_number",
+        "cycle_basis",
+        "eigenvector_centrality",
+        "katz_centrality",
+        "katz_centrality_numpy",
+        "max_weight_matching",
+        "stoer_wagner",
+        "transitivity",
+        # NetworkX's own implementation fails on multigraph edges.
+        "is_maximal_matching",
+        # NetworkX keys the result by the factors' edge keys, doubles the
+        # complement's non-edges, or enumerates mappings per parallel edge;
+        # the rustworkx kernels drop edge identity, so these fall back.
+        "cartesian_product",
+        "complement",
+        "tensor_product",
+        "vf2pp_all_isomorphisms",
+    }
+)
+
+
+def _docs(name, notes):
+    parts = [_CONVERTED]
+    if name in _MULTIGRAPH_REFUSED:
+        parts.append(_NO_MULTIGRAPH)
+    return " ".join([*parts, *notes])
 
 
 def get_info():
     """Return backend metadata used by NetworkX's documentation box."""
-    functions = {name: {"additional_docs": _docs(notes)} for name, notes in _FUNCTIONS.items()}
+    functions = {
+        name: {"additional_docs": _docs(name, notes)} for name, notes in _FUNCTIONS.items()
+    }
     functions.update({name: {"additional_docs": docs} for name, docs in _GENERATORS.items()})
     return {
         "backend_name": "rustworkx",

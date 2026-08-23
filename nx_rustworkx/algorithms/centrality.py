@@ -11,11 +11,12 @@ from nx_rustworkx.algorithms._utils import (
     can_run_directed,
     default_can_run,
     edge_weight_fn,
+    keyed_edge,
     reject_callable_weight,
-    reject_multigraph,
     remap_scores,
     require_directed,
     require_nodes,
+    simple_view,
 )
 
 __all__ = [
@@ -44,9 +45,6 @@ def _can_run_betweenness(
     seed=None,
     **kwargs,
 ):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if k is not None:
         return "rustworkx betweenness_centrality does not support k-sampling"
     if weight is not None:
@@ -70,8 +68,11 @@ def betweenness_centrality(
     """Unweighted Brandes betweenness via rustworkx."""
     _ = k, weight, seed, kwargs
     rwg = as_rw_graph(G)
+    # NetworkX counts shortest paths over G[v], so parallel edges never
+    # multiply a path; rustworkx would count each of them.
+    graph = simple_view(rwg).graph if rwg.is_multigraph() else rwg.rx_graph
     scores = rx.betweenness_centrality(
-        rwg.rx_graph,
+        graph,
         normalized=bool(normalized),
         endpoints=bool(endpoints),
         parallel_threshold=parallel_threshold,
@@ -80,6 +81,7 @@ def betweenness_centrality(
 
 
 betweenness_centrality.can_run = _can_run_betweenness
+betweenness_centrality.multigraph = True
 
 
 def _can_run_edge_betweenness(
@@ -90,9 +92,6 @@ def _can_run_edge_betweenness(
     seed=None,
     **kwargs,
 ):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if k is not None:
         return "rustworkx edge_betweenness_centrality does not support k-sampling"
     if weight is not None:
@@ -115,6 +114,8 @@ def edge_betweenness_centrality(
     """Unweighted edge betweenness via rustworkx."""
     _ = k, weight, seed, kwargs
     rwg = as_rw_graph(G)
+    if rwg.is_multigraph():
+        return _keyed_edge_betweenness(rwg, normalized, parallel_threshold)
     scores = rx.edge_betweenness_centrality(
         rwg.rx_graph,
         normalized=bool(normalized),
@@ -129,13 +130,31 @@ def edge_betweenness_centrality(
     return out
 
 
+def _keyed_edge_betweenness(rwg, normalized, parallel_threshold):
+    """NetworkX's multigraph rule: score the collapsed pair, then split it
+    equally over the parallel keys (all of them tie, as the kernel is
+    unweighted) and report ``(u, v, key)`` entries."""
+    view = simple_view(rwg)
+    scores = rx.edge_betweenness_centrality(
+        view.graph,
+        normalized=bool(normalized),
+        parallel_threshold=parallel_threshold,
+    )
+    edge_map = rwg.rx_graph.edge_index_map()
+    out = {}
+    for collapsed, score in scores.items():
+        members = view.bundles[collapsed]
+        share = float(score) / len(members)
+        for index in members:
+            out[keyed_edge(rwg, index, edge_map=edge_map)] = share
+    return out
+
+
 edge_betweenness_centrality.can_run = _can_run_edge_betweenness
+edge_betweenness_centrality.multigraph = True
 
 
 def _can_run_closeness(G, u=None, distance=None, wf_improved=True, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if callable(distance):
         return "nx-rustworkx does not support custom weight callables"
     return True
@@ -187,6 +206,7 @@ def closeness_centrality(
 
 
 closeness_centrality.can_run = _can_run_closeness
+closeness_centrality.multigraph = True
 
 
 def _can_run_eigenvector(
@@ -233,10 +253,6 @@ def eigenvector_centrality(
 eigenvector_centrality.can_run = _can_run_eigenvector
 
 
-def _can_run_degree(G, *args, **kwargs):
-    return reject_multigraph(G) or True
-
-
 def _trivial_degree_centrality(rwg):
     """NetworkX reports 1 for every node when the graph has at most one node."""
     if rwg.number_of_nodes() <= 1:
@@ -250,10 +266,19 @@ def degree_centrality(G):
     trivial = _trivial_degree_centrality(rwg)
     if trivial is not None:
         return trivial
-    return remap_scores(rwg, rx.degree_centrality(rwg.rx_graph))
+    scores = remap_scores(rwg, rx.degree_centrality(rwg.rx_graph))
+    if not rwg.is_directed():
+        # rustworkx counts an undirected self-loop once toward the degree;
+        # NetworkX counts it twice, so add the missing share back.
+        share = 1.0 / (rwg.number_of_nodes() - 1)
+        index_to_node = rwg.index_to_node
+        for u, v in rwg.rx_graph.edge_list():
+            if u == v:
+                scores[index_to_node[u]] += share
+    return scores
 
 
-degree_centrality.can_run = _can_run_degree
+degree_centrality.multigraph = True
 
 
 def in_degree_centrality(G):
@@ -267,6 +292,7 @@ def in_degree_centrality(G):
 
 
 in_degree_centrality.can_run = can_run_directed
+in_degree_centrality.multigraph = True
 
 
 def out_degree_centrality(G):
@@ -280,6 +306,7 @@ def out_degree_centrality(G):
 
 
 out_degree_centrality.can_run = can_run_directed
+out_degree_centrality.multigraph = True
 
 
 def _can_run_katz(
@@ -374,9 +401,6 @@ katz_centrality_numpy.can_run = _can_run_katz_numpy
 
 
 def _can_run_hits(G, max_iter=100, tol=1.0e-8, nstart=None, normalized=True, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if not normalized:
         return "rustworkx hits always normalizes the result"
     return True
@@ -405,6 +429,7 @@ def hits(G, max_iter=100, tol=1.0e-8, nstart=None, normalized=True):
 
 
 hits.can_run = _can_run_hits
+hits.multigraph = True
 
 
 def _is_node(rwg, value) -> bool:
@@ -424,9 +449,6 @@ def _resolve_groups(rwg, C):
 
 
 def _can_run_group_betweenness(G, C, normalized=True, weight=None, endpoints=False, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if weight is not None:
         return reject_callable_weight(weight) or (
             "rustworkx group_betweenness_centrality is unweighted only"
@@ -449,10 +471,11 @@ def group_betweenness_centrality(
     _ = weight, endpoints
     rwg = as_rw_graph(G)
     groups, many = _resolve_groups(rwg, C)
+    graph = simple_view(rwg).graph if rwg.is_multigraph() else rwg.rx_graph
     scores = [
         float(
             rx.group_betweenness_centrality(
-                rwg.rx_graph,
+                graph,
                 require_nodes(rwg, group, kind="C node"),
                 normalized=bool(normalized),
                 parallel_threshold=parallel_threshold,
@@ -464,12 +487,10 @@ def group_betweenness_centrality(
 
 
 group_betweenness_centrality.can_run = _can_run_group_betweenness
+group_betweenness_centrality.multigraph = True
 
 
 def _can_run_group_closeness(G, S, weight=None, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if weight is not None:
         return reject_callable_weight(weight) or (
             "rustworkx group_closeness_centrality is unweighted only"
@@ -485,6 +506,7 @@ def group_closeness_centrality(G, S, weight=None):
 
 
 group_closeness_centrality.can_run = _can_run_group_closeness
+group_closeness_centrality.multigraph = True
 
 
 def group_degree_centrality(G, S):
@@ -493,4 +515,4 @@ def group_degree_centrality(G, S):
     return float(rx.group_degree_centrality(rwg.rx_graph, require_nodes(rwg, S, kind="S node")))
 
 
-group_degree_centrality.can_run = _can_run_degree
+group_degree_centrality.multigraph = True

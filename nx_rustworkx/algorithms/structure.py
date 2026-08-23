@@ -8,15 +8,10 @@ import rustworkx as rx
 from nx_rustworkx.algorithms._utils import (
     as_directed_rx,
     as_rw_graph,
-    reject_multigraph,
     remap_nodes,
 )
 
 __all__ = ["color", "is_bipartite", "is_planar", "isolates", "number_of_isolates", "transitivity"]
-
-
-def _can_run(G, *args, **kwargs):
-    return reject_multigraph(G) or True
 
 
 def is_bipartite(G):
@@ -26,19 +21,32 @@ def is_bipartite(G):
     return bool(rx.is_bipartite(graph))
 
 
-is_bipartite.can_run = _can_run
+is_bipartite.multigraph = True
 
 
 def is_planar(G):
     """Return True if the graph can be drawn without edge crossings."""
     rwg = as_rw_graph(G)
     # rustworkx's planarity check takes an undirected graph; edge direction
-    # does not change planarity.
-    graph = rwg.to_undirected().rx_graph if rwg.is_directed() else rwg.rx_graph
+    # does not change planarity, and neither do parallel edges.
+    if rwg.is_multigraph():
+        graph = _undirected_simple(rwg.rx_graph)
+    elif rwg.is_directed():
+        graph = rwg.to_undirected().rx_graph
+    else:
+        graph = rwg.rx_graph
     return bool(rx.is_planar(graph))
 
 
-is_planar.can_run = _can_run
+is_planar.multigraph = True
+
+
+def _undirected_simple(rx_graph):
+    """A simple undirected container over the same node indices."""
+    graph = rx.PyGraph(multigraph=False)
+    graph.add_nodes_from([rx_graph.get_node_data(i) for i in rx_graph.node_indices()])
+    graph.add_edges_from([(u, v, None) for u, v in rx_graph.edge_list()])
+    return graph
 
 
 def isolates(G):
@@ -47,7 +55,7 @@ def isolates(G):
     return iter(remap_nodes(rwg, rx.isolates(rwg.rx_graph)))
 
 
-isolates.can_run = _can_run
+isolates.multigraph = True
 
 
 def number_of_isolates(G):
@@ -56,16 +64,13 @@ def number_of_isolates(G):
     return len(rx.isolates(rwg.rx_graph))
 
 
-number_of_isolates.can_run = _can_run
+number_of_isolates.multigraph = True
 
 
 def transitivity(G):
     """Return the fraction of all possible triangles present in the graph."""
     rwg = as_rw_graph(G)
     return float(rx.transitivity(rwg.rx_graph))
-
-
-transitivity.can_run = _can_run
 
 
 def color(G):
@@ -81,4 +86,4 @@ def color(G):
     return out
 
 
-color.can_run = _can_run
+color.multigraph = True

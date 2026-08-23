@@ -5,15 +5,12 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
-from nx_rustworkx.algorithms._utils import as_rw_graph, reject_multigraph, remap_nodes
+from nx_rustworkx.algorithms._utils import as_rw_graph, remap_nodes
 
 __all__ = ["bfs_layers", "dfs_edges"]
 
 
 def _can_run_dfs_edges(G, source=None, depth_limit=None, sort_neighbors=None, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if depth_limit is not None:
         return "rustworkx dfs_edges does not support depth_limit"
     if sort_neighbors is not None:
@@ -40,6 +37,7 @@ def dfs_edges(G, source=None, depth_limit=None, *, sort_neighbors=None):
 
 
 dfs_edges.can_run = _can_run_dfs_edges
+dfs_edges.multigraph = True
 
 
 def bfs_layers(G, sources):
@@ -60,4 +58,4 @@ def bfs_layers(G, sources):
     return _iter()
 
 
-bfs_layers.can_run = lambda G, *a, **k: reject_multigraph(G) or True
+bfs_layers.multigraph = True

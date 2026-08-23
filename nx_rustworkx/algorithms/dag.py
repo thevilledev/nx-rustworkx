@@ -14,7 +14,6 @@ from nx_rustworkx.algorithms._utils import (
     as_rw_graph,
     can_run_directed,
     default_can_run,
-    reject_multigraph,
     remap_nodes,
     require_directed,
 )
@@ -46,7 +45,7 @@ def is_directed_acyclic_graph(G):
     return bool(rx.is_directed_acyclic_graph(rwg.rx_graph))
 
 
-is_directed_acyclic_graph.can_run = lambda G, *a, **k: reject_multigraph(G) or True
+is_directed_acyclic_graph.multigraph = True
 
 
 def topological_sort(G):
@@ -65,6 +64,7 @@ def topological_sort(G):
 
 
 topological_sort.can_run = can_run_directed
+topological_sort.multigraph = True
 
 
 def topological_generations(G):
@@ -84,6 +84,7 @@ def topological_generations(G):
 
 
 topological_generations.can_run = can_run_directed
+topological_generations.multigraph = True
 
 
 def _reachability(G, source, kind):
@@ -104,7 +105,7 @@ def ancestors(G, source):
     return _reachability(G, source, "ancestors")
 
 
-ancestors.can_run = lambda G, *a, **k: reject_multigraph(G) or True
+ancestors.multigraph = True
 
 
 def descendants(G, source):
@@ -112,7 +113,7 @@ def descendants(G, source):
     return _reachability(G, source, "descendants")
 
 
-descendants.can_run = ancestors.can_run
+descendants.multigraph = True
 
 
 def descendants_at_distance(G, source, distance):
@@ -128,7 +129,7 @@ def descendants_at_distance(G, source, distance):
     return set()
 
 
-descendants_at_distance.can_run = ancestors.can_run
+descendants_at_distance.multigraph = True
 
 
 def _reachable_indices(rwg, start_index) -> set[int]:
@@ -174,6 +175,7 @@ def dag_longest_path(G, weight="weight", default_weight=1, topo_order=None):
 
 
 dag_longest_path.can_run = _can_run_dag_longest_path
+dag_longest_path.multigraph = True
 
 
 def dag_longest_path_length(G, weight="weight", default_weight=1):
@@ -190,6 +192,7 @@ def dag_longest_path_length(G, weight="weight", default_weight=1):
 
 
 dag_longest_path_length.can_run = _can_run_dag_longest_path
+dag_longest_path_length.multigraph = True
 
 
 def transitive_reduction(G):
@@ -209,6 +212,7 @@ def transitive_reduction(G):
 
 
 transitive_reduction.can_run = can_run_directed
+transitive_reduction.multigraph = True
 
 
 def immediate_dominators(G, start):
@@ -232,6 +236,7 @@ def immediate_dominators(G, start):
 
 
 immediate_dominators.can_run = can_run_directed
+immediate_dominators.multigraph = True
 
 
 def dominance_frontiers(G, start):
@@ -270,3 +275,4 @@ def dominance_frontiers(G, start):
 
 
 dominance_frontiers.can_run = can_run_directed
+dominance_frontiers.multigraph = True

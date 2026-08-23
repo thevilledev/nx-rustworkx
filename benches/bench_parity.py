@@ -39,7 +39,25 @@ def _graphs(n: int, seed: int) -> dict:
     dag = nx.DiGraph()
     dag.add_nodes_from(range(n))
     dag.add_edges_from((u, v) for u in range(n) for v in range(u + 1, min(n, u + 6)) if (u + v) % 3)
-    return {"undirected": undirected, "directed": directed, "dag": dag, "small": small}
+    # Multigraph twins: every other edge gets a heavier parallel copy, so the
+    # collapsed-view functions pay for bundles and the weighted ones must
+    # still pick the lighter edge.
+    multi = nx.MultiGraph(undirected)
+    multi.add_edges_from(
+        (u, v, {"weight": w + 1}) for u, v, w in list(undirected.edges(data="weight"))[::2]
+    )
+    multi_directed = nx.MultiDiGraph(directed)
+    multi_directed.add_edges_from(
+        (u, v, {"weight": w + 1}) for u, v, w in list(directed.edges(data="weight"))[::2]
+    )
+    return {
+        "undirected": undirected,
+        "directed": directed,
+        "dag": dag,
+        "small": small,
+        "multi": multi,
+        "multi_directed": multi_directed,
+    }
 
 
 def _calls(graphs, n):
@@ -213,6 +231,31 @@ def _calls(graphs, n):
     yield "cartesian_product", nx.path_graph(60), (nx.cycle_graph(30),), {}
     yield "tensor_product", nx.path_graph(60), (nx.cycle_graph(30),), {}
 
+    # Multigraph rows, labelled ``name[kind]`` so they sit next to the simple
+    # row of the same function: the collapsed-view kernels and the hot paths
+    # a road-network workload takes.
+    M, MD = graphs["multi"], graphs["multi_directed"]
+    for name in (
+        "betweenness_centrality",
+        "edge_betweenness_centrality",
+        "group_betweenness_centrality",
+        "bridges",
+        "articulation_points",
+        "biconnected_components",
+        "minimum_spanning_tree",
+        "is_planar",
+        "closeness_centrality",
+        "pagerank",
+    ):
+        extra = (half,) if name == "group_betweenness_centrality" else ()
+        yield f"{name}[multi]", M, extra, {}
+    yield "closeness_centrality[multi,distance]", M, (), {"distance": "weight"}
+    yield "shortest_path[multi]", M, (), {"source": src, "weight": "weight"}
+    yield "single_source_dijkstra_path_length[multi]", M, (src,), {}
+    yield "betweenness_centrality[multi_directed]", MD, (), {}
+    yield "shortest_path[multi_directed]", MD, (), {"source": src, "weight": "weight"}
+    yield "strongly_connected_components[multi_directed]", MD, (), {}
+
 
 def _consume(value):
     if hasattr(value, "__next__") or isinstance(value, (map, filter)):
@@ -239,7 +282,8 @@ def main() -> int:
 
     graphs = _graphs(args.nodes, args.seed)
     rows = []
-    for name, G, extra, kwargs in _calls(graphs, args.nodes):
+    for label, G, extra, kwargs in _calls(graphs, args.nodes):
+        name = label.partition("[")[0]
         func = (
             getattr(nx, name, None)
             or getattr(nx.approximation, name, None)
@@ -252,13 +296,13 @@ def main() -> int:
             backend = _time(lambda: _consume(func(G, *extra, backend="rustworkx", **kwargs)))
             reference = _time(lambda: _consume(func.orig_func(G, *extra, **kwargs)))
         except Exception as exc:  # noqa: BLE001 - report, do not stop the sweep
-            rows.append((name, None, None, f"{type(exc).__name__}: {exc}", False))
+            rows.append((label, None, None, f"{type(exc).__name__}: {exc}", False))
             continue
         auto = BackendInterface.should_run(name, (G, *extra), kwargs) is True
-        rows.append((name, backend, reference, None, auto))
+        rows.append((label, backend, reference, None, auto))
         gc.collect()
 
-    covered = {row[0] for row in rows}
+    covered = {row[0].partition("[")[0] for row in rows}
     missing = sorted(set(ALGORITHMS) - covered)
 
     timed = [r for r in rows if r[1] is not None]

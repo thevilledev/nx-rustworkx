@@ -5,7 +5,7 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
-from nx_rustworkx.algorithms._utils import as_rw_graph, reject_multigraph
+from nx_rustworkx.algorithms._utils import as_rw_graph
 
 __all__ = ["core_number"]
 
@@ -21,6 +21,3 @@ def core_number(G):
         )
     index_to_node = rwg.index_to_node
     return {index_to_node[i]: int(value) for i, value in rx.core_number(rx_graph).items()}
-
-
-core_number.can_run = lambda G, *a, **k: reject_multigraph(G) or True
