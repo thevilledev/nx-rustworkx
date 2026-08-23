@@ -59,8 +59,8 @@
             <tr><th scope="row">Simple paths</th><td><code>all_simple_paths</code></td></tr>
             <tr><th scope="row">Isomorphism</th><td><code>is_isomorphic</code>, <code>vf2pp_is_isomorphic</code>, <code>vf2pp_isomorphism</code>, <code>vf2pp_all_isomorphisms</code></td></tr>
             <tr><th scope="row">Construction</th><td><code>Graph</code>, <code>DiGraph</code>, <code>empty_graph</code>, <code>from_edgelist</code></td></tr>
-            <tr><th scope="row">Generators</th><td><code>path_graph</code>, <code>cycle_graph</code>, <code>star_graph</code>, <code>complete_graph</code>, <code>barbell_graph</code>, <code>lollipop_graph</code>, <code>binomial_tree</code>, <code>full_rary_tree</code>, <code>karate_club_graph</code>, <code>grid_2d_graph</code></td></tr>
-            <tr><th scope="row">Random generators</th><td><code>gnp_random_graph</code>, <code>fast_gnp_random_graph</code>, <code>gnm_random_graph</code>, <code>dense_gnm_random_graph</code>, <code>random_regular_graph</code>, <code>stochastic_block_model</code>, <code>random_geometric_graph</code>, <code>barabasi_albert_graph</code></td></tr>
+            <tr><th scope="row">Generators</th><td><code>path_graph</code>, <code>cycle_graph</code>, <code>star_graph</code>, <code>complete_graph</code>, <code>barbell_graph</code>, <code>lollipop_graph</code>, <code>binomial_tree</code>, <code>full_rary_tree</code>, <code>karate_club_graph</code>, <code>grid_2d_graph</code>, <code>hexagonal_lattice_graph</code></td></tr>
+            <tr><th scope="row">Random generators</th><td><code>gnp_random_graph</code>, <code>fast_gnp_random_graph</code>, <code>gnm_random_graph</code>, <code>dense_gnm_random_graph</code>, <code>random_regular_graph</code>, <code>stochastic_block_model</code>, <code>random_geometric_graph</code>, <code>barabasi_albert_graph</code>, <code>bipartite.random_graph</code></td></tr>
           </tbody>
         </table>
       </div>
@@ -106,7 +106,7 @@
         <li><code>greedy_color</code> implements <code>largest_first</code>, <code>saturation_largest_first</code>/<code>DSATUR</code>, and <code>independent_set</code>; other strategies fall through.</li>
         <li><code>max_weight_matching</code> requires integer edge weights.</li>
         <li>A* requires a consistent heuristic. Disable the check with <code>nx.config.backends.rustworkx.astar_heuristic_check = False</code> only when you already know it is consistent.</li>
-        <li>Random generators take no <code>create_using</code>; <code>random_geometric_graph</code> samples its own positions (explicit <code>pos</code> falls through); <code>barabasi_albert_graph</code> takes no <code>initial_graph</code>; <code>grid_2d_graph</code> handles undirected, non-periodic grids.</li>
+        <li>Random generators take no <code>create_using</code>; <code>random_geometric_graph</code> samples its own positions (explicit <code>pos</code> falls through); <code>barabasi_albert_graph</code> takes no <code>initial_graph</code>; <code>grid_2d_graph</code> handles undirected, non-periodic grids; <code>bipartite.random_graph</code> is undirected with <code>p &lt; 1</code>.</li>
       </ul>
 
       <h2 id="valid-differences">Valid differences</h2>
