@@ -51,6 +51,8 @@ def _calls(n: int):
     )
     yield "random_geometric_graph", (n, 0.05), {"seed": 1}
     yield "barabasi_albert_graph", (n, 3), {"seed": 1}
+    yield "hexagonal_lattice_graph", (side // 2, side // 2), {}
+    yield "random_graph", (n // 2, n - n // 2, min(0.05, 20 / n)), {"seed": 1}
 
 
 def _time(fn, budget=0.25, max_loops=200):
@@ -73,7 +75,7 @@ def main() -> int:
     rows = []
     try:
         for name, call_args, kwargs in _calls(args.nodes):
-            func = getattr(nx, name)
+            func = getattr(nx, name, None) or getattr(nx.bipartite, name)
             print(f"  timing {name} ...", file=sys.stderr, flush=True)
 
             def _orig_kwargs():

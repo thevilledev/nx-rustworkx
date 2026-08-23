@@ -108,3 +108,11 @@ def test_compat_probes_match_installed_networkx():
     except nx.NetworkXError:
         directed_star = False
     assert _compat.star_graph_allows_directed() == directed_star
+    H = nx.hexagonal_lattice_graph.orig_func(1, 1, with_positions=False)
+    assert _compat.hexagonal_lattice_positions_are_optional() == all(
+        "pos" not in data for _, data in H.nodes(data=True)
+    )
+    H2 = nx.hexagonal_lattice_graph.orig_func(2, 2, periodic=True, with_positions=False)
+    assert _compat.hexagonal_lattice_periodic_is_clean() == all(
+        "contraction" not in data for _, data in H2.nodes(data=True)
+    )

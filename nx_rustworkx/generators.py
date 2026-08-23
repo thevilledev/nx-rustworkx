@@ -36,6 +36,8 @@ __all__ = [
     "stochastic_block_model",
     "random_geometric_graph",
     "barabasi_albert_graph",
+    "hexagonal_lattice_graph",
+    "random_graph",
     "GENERATORS",
 ]
 
@@ -816,6 +818,122 @@ def barabasi_albert_graph(n, m, seed=None, initial_graph=None, *, create_using=N
 barabasi_albert_graph.can_run = _can_run_ba
 barabasi_albert_graph.should_run = _should_run_always
 
+
+def _hex_labels(m, n, periodic):
+    """The label set NetworkX's hexagonal lattice keeps, in sorted order.
+
+    Sorted order is exactly the rustworkx kernel's index order, verified
+    edge-for-edge across sizes, both orientations, and periodic wraps.
+    """
+    twice_m = 2 * m
+    labels = {(i, j) for i in range(n + 1) for j in range(twice_m + 2)}
+    labels.discard((0, twice_m + 1))
+    labels.discard((n, (twice_m + 1) * (n % 2)))
+    if periodic:
+        labels -= {(i, twice_m) for i in range(n)}
+        labels -= {(i, twice_m + 1) for i in range(1, n + 1)}
+        labels -= {(n, j) for j in range(1, twice_m)}
+        labels.discard((n, twice_m))
+    return sorted(labels)
+
+
+def _hex_positions(labels, periodic):
+    """NetworkX's embedding formula, evaluated with the same expressions."""
+    h = math.sqrt(3) / 2
+    pos = {}
+    for i, j in labels:
+        x = 0.5 + i + i // 2 + (j % 2) * ((i % 2) - 0.5)
+        y = h * j + 0.01 * i * i if periodic else h * j
+        pos[(i, j)] = (x, y)
+    return pos
+
+
+def _can_run_hex(m=None, n=None, periodic=False, with_positions=True, create_using=None, **kwargs):
+    _ = m, n, with_positions, kwargs
+    reason = _reject_multi(create_using)
+    if reason:
+        return reason
+    if periodic and not _compat.hexagonal_lattice_periodic_is_clean():
+        # Older NetworkX stores nested contraction attrs on the merged nodes.
+        return "periodic lattices fall back on this NetworkX version"
+    return True
+
+
+def hexagonal_lattice_graph(m, n, periodic=False, with_positions=True, create_using=None):
+    """Hexagonal lattice with NetworkX's ``(i, j)`` labels and ``pos`` attrs."""
+    _raise_for_multi(create_using)
+    directed = _is_directed_spec(create_using)
+    if m == 0 or n == 0:
+        return _wrap(_empty_container(directed), [], directed=directed)
+    if m < 0 or n < 0:
+        # NetworkX fails removing the (0, 2m+1) corner from the empty lattice.
+        raise nx.NetworkXError(f"The node (0, {2 * m + 1}) is not in the graph.")
+    if periodic and (n % 2 == 1 or m < 2 or n < 2):
+        raise nx.NetworkXError("periodic hexagonal lattice needs m > 1, n > 1 and even n")
+    if periodic and not _compat.hexagonal_lattice_periodic_is_clean():
+        raise NotImplementedError(
+            "this NetworkX version stores contraction attrs on periodic hexagonal lattices"
+        )
+    if directed:
+        g = rxgen.directed_hexagonal_lattice_graph(m, n, multigraph=False, periodic=bool(periodic))
+    else:
+        g = rxgen.hexagonal_lattice_graph(m, n, multigraph=False, periodic=bool(periodic))
+    labels = _hex_labels(m, n, bool(periodic))
+    out = _wrap(g, labels, directed=directed)
+    # Older NetworkX embeds positions even when with_positions=False.
+    if with_positions or not _compat.hexagonal_lattice_positions_are_optional():
+        for label, xy in _hex_positions(labels, bool(periodic)).items():
+            out.node_attrs[label] = {"pos": xy}
+    return out
+
+
+hexagonal_lattice_graph.can_run = _can_run_hex
+hexagonal_lattice_graph.should_run = _should_run_always
+
+
+def _can_run_bipartite_random(n=None, m=None, p=None, seed=None, directed=False, **kwargs):
+    _ = seed, kwargs
+    reason = _can_run_random_common(None)
+    if reason is not True:
+        return reason
+    if directed:
+        # NetworkX samples both directions; rustworkx's kernel is one-way.
+        return "directed bipartite sampling falls back to NetworkX"
+    try:
+        if p is not None and p >= 1:
+            return "p >= 1 delegates to complete_bipartite_graph"
+        if (n is not None and n < 0) or (m is not None and m < 0):
+            return "negative sizes fall back to NetworkX"
+    except TypeError:
+        pass  # non-numeric arguments raise inside NetworkX; let it
+    return True
+
+
+def random_graph(n, m, p, seed=None, directed=False):
+    """Bipartite G(n, m, p) sampled by rustworkx with ``bipartite`` labels."""
+    if directed or p >= 1:
+        raise NotImplementedError(
+            "nx-rustworkx implements bipartite random_graph for undirected p < 1"
+        )
+    total = int(n) + int(m)
+    if p <= 0:
+        g = _empty_container(False, total)
+    else:
+        _check_seed_policy(seed)
+        g = rx.undirected_random_bipartite_graph(int(n), int(m), float(p), seed=_rx_seed(seed))
+    out = _wrap(g, range(total), directed=False)
+    # NetworkX names bipartite G(n, m, p) after its sampling algorithm.
+    out.graph["name"] = f"fast_gnp_random_graph({n},{m},{p})"
+    for v in range(int(n)):
+        out.node_attrs[v] = {"bipartite": 0}
+    for v in range(int(n), total):
+        out.node_attrs[v] = {"bipartite": 1}
+    return out
+
+
+random_graph.can_run = _can_run_bipartite_random
+random_graph.should_run = _should_run_always
+
 GENERATORS = [
     "graph__new__",
     "digraph__new__",
@@ -839,4 +957,6 @@ GENERATORS = [
     "stochastic_block_model",
     "random_geometric_graph",
     "barabasi_albert_graph",
+    "hexagonal_lattice_graph",
+    "random_graph",
 ]

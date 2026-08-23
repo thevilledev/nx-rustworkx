@@ -480,3 +480,72 @@ def test_barabasi_albert_initial_graph_falls_back():
     assert generators.barabasi_albert_graph.can_run(10, 3, initial_graph=nx.Graph()) is not True
     with pytest.raises(NotImplementedError):
         generators.barabasi_albert_graph(10, 3, seed=_rng(None), initial_graph=nx.Graph())
+
+
+# --- hexagonal lattice and bipartite --------------------------------------
+
+
+@pytest.mark.parametrize("m,n", [(0, 3), (3, 0), (1, 1), (2, 2), (2, 3), (3, 4), (4, 5)])
+@pytest.mark.parametrize("periodic", [False, True])
+@pytest.mark.parametrize("with_positions", [True, False])
+@pytest.mark.parametrize("create_using", [None, nx.DiGraph])
+def test_hexagonal_lattice_matches(m, n, periodic, with_positions, create_using):
+    can = generators.hexagonal_lattice_graph.can_run(
+        m, n, periodic=periodic, with_positions=with_positions, create_using=create_using
+    )
+    if can is not True:
+        pytest.skip(f"declined on this NetworkX version: {can}")
+    assert_matches_networkx(
+        "hexagonal_lattice_graph",
+        m,
+        n,
+        periodic=periodic,
+        with_positions=with_positions,
+        create_using=create_using,
+    )
+
+
+@pytest.mark.parametrize("m,n,kwargs", [(2, 3, {"periodic": True}), (-1, 2, {}), (2, -1, {})])
+def test_hexagonal_lattice_rejects_like_networkx(m, n, kwargs):
+    assert_raises_like_networkx("hexagonal_lattice_graph", m, n, **kwargs)
+
+
+def test_bipartite_random_graph_unseeded():
+    G = generators.random_graph(20, 30, 0.3, seed=_rng(None))
+    assert isinstance(G, RustworkxGraph)
+    assert G.number_of_nodes() == 50
+    assert G.graph["name"] == "fast_gnp_random_graph(20,30,0.3)"
+    assert G.nodes[0]["bipartite"] == 0
+    assert G.nodes[49]["bipartite"] == 1
+    assert all((u < 20) != (v < 20) for u, v in G.edges)
+
+
+@pytest.mark.parametrize("n,m,p", [(3, 4, 0.0), (3, 4, -1.0), (0, 4, 0.0), (5, 0, 0.0)])
+def test_bipartite_random_graph_boundaries_match(n, m, p):
+    got = generators.random_graph(n, m, p, seed=_rng(None))
+    expected = nx.bipartite.random_graph.orig_func(n, m, p, seed=_rng(1))
+    assert nx.utils.graphs_equal(rustworkx_graph_to_nx(got), expected)
+
+
+def test_bipartite_random_graph_seeded_gate_and_determinism(native_seeded):
+    A = generators.random_graph(15, 15, 0.4, seed=_rng(7))
+    B = generators.random_graph(15, 15, 0.4, seed=_rng(7))
+    assert {tuple(sorted(e)) for e in A.edges} == {tuple(sorted(e)) for e in B.edges}
+
+
+def test_bipartite_random_graph_seeded_raises_without_opt_in():
+    with pytest.raises(NotImplementedError, match="native_seeded_generators"):
+        generators.random_graph(10, 10, 0.5, seed=_rng(42))
+
+
+def test_bipartite_random_graph_declines():
+    assert generators.random_graph.can_run(3, 3, 0.5, directed=True) is not True
+    assert generators.random_graph.can_run(3, 3, 1.0) is not True
+    assert generators.random_graph.can_run(-1, 3, 0.5) is not True
+    assert generators.random_graph.can_run(3, 3, 0.5) is True
+    dispatchable = nx.utils.backends._dispatchable
+    dispatchable._is_testing = True
+    try:
+        assert generators.random_graph.can_run(3, 3, 0.5) is not True
+    finally:
+        dispatchable._is_testing = False

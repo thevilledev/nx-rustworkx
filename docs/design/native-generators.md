@@ -284,12 +284,20 @@ these outcomes:
   deterministic and floating-point-boundary-sensitive, so it falls back.
 - **`hyperbolic_random_graph` — dropped.** NetworkX has no dispatchable
   function of that name; there is nothing to implement.
+- **`hexagonal_lattice_graph` — shipped** (follow-up batch). The kernel's flat
+  index order turned out to be exactly the sorted order of NetworkX's `(i, j)`
+  label set — verified edge-for-edge across sizes, both orientations, and
+  periodic wraps — so the mapping is a sorted label list. Positions are
+  computed with NetworkX's own embedding expressions in Python (the kernel's
+  periodic positions differ), giving bit-identical `pos` attributes.
+- **bipartite `random_graph` — shipped** (follow-up batch), undirected with
+  `p < 1`: NetworkX samples directed bipartite graphs in both directions while
+  rustworkx's kernel is one-way, and `p >= 1` delegates to
+  `complete_bipartite_graph`, so both fall back. `bipartite` labels and
+  NetworkX's graph name are replicated.
 - **`watts_strogatz_graph` and rewiring models — parked**: no rustworkx kernel.
-- **`hexagonal_lattice_graph` — parked**: kernel exists but NetworkX's tuple
-  labeling and embedding attrs make the mapping fiddly.
-- **bipartite `random_graph` / `gnmk_random_graph` — parked**: rustworkx has a
-  p-based bipartite kernel only, and the NetworkX versions set `bipartite`
-  node attributes; needs its own pass.
+- **bipartite `gnmk_random_graph` — parked**: rustworkx has no edge-count-based
+  bipartite kernel.
 
 ## Deliverables
 

@@ -15,6 +15,8 @@ import networkx as nx
 
 __all__ = [
     "dominance_frontiers_includes_start",
+    "hexagonal_lattice_periodic_is_clean",
+    "hexagonal_lattice_positions_are_optional",
     "immediate_dominators_includes_start",
     "metric_closure_is_deprecated",
     "single_target_shortest_path_length_returns_dict",
@@ -50,6 +52,20 @@ def metric_closure_is_deprecated() -> bool:
         warnings.simplefilter("always")
         func(nx.path_graph(2))
     return any(issubclass(w.category, DeprecationWarning) for w in caught)
+
+
+@lru_cache(maxsize=None)
+def hexagonal_lattice_positions_are_optional() -> bool:
+    """NetworkX 3.6 started honoring ``with_positions=False`` in hex lattices."""
+    G = _orig("hexagonal_lattice_graph")(1, 1, with_positions=False)
+    return all("pos" not in data for _, data in G.nodes(data=True))
+
+
+@lru_cache(maxsize=None)
+def hexagonal_lattice_periodic_is_clean() -> bool:
+    """NetworkX 3.6 stopped storing contraction attrs on periodic hex lattices."""
+    G = _orig("hexagonal_lattice_graph")(2, 2, periodic=True, with_positions=False)
+    return all("contraction" not in data for _, data in G.nodes(data=True))
 
 
 @lru_cache(maxsize=None)

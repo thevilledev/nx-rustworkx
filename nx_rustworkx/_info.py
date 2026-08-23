@@ -281,6 +281,12 @@ _GENERATORS = {
     "barabasi_albert_graph": _NATIVE_RANDOM + " The growth starts from NetworkX's "
     "``star_graph(m)`` seed, so the model matches and only the RNG differs; "
     "``initial_graph`` falls back to NetworkX." + _NO_CREATE_USING,
+    "hexagonal_lattice_graph": _NATIVE_EXACT + " Keeps NetworkX's ``(i, j)`` labels "
+    "and ``pos`` embedding. Periodic wraps run on NetworkX 3.6+; older versions "
+    "store contraction attrs there, so periodic falls back.",
+    "random_graph": _NATIVE_RANDOM + " Bipartite G(n, m, p) with NetworkX's "
+    "``bipartite`` node labels and graph name. ``directed`` and ``p >= 1`` fall "
+    "back to NetworkX.",
 }
 
 
