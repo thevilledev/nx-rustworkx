@@ -826,7 +826,7 @@ def _astar_path(rwg, source, target, heuristic, weight):
             rwg.rx_graph,
             src,
             lambda payload: payload == target,
-            lambda data: weight_fn(data),
+            weight_fn,
             lambda payload: float(heuristic(payload, target)),
         )
     except rx.NoPathFound as exc:
@@ -965,9 +965,7 @@ def negative_edge_cycle(G, weight="weight", heuristic=True):
     rwg = as_rw_graph(G)
     if rwg.number_of_nodes() == 0:
         return False
-    return bool(
-        rx.negative_edge_cycle(as_directed_rx(rwg), lambda data: edge_weight_fn(weight)(data))
-    )
+    return bool(rx.negative_edge_cycle(as_directed_rx(rwg), edge_weight_fn(weight)))
 
 
 negative_edge_cycle.can_run = _can_run_weighted
@@ -984,7 +982,7 @@ def find_negative_cycle(G, source, weight="weight"):
         directed = directed.subgraph(sorted(reachable))
     weight_fn = edge_weight_fn(weight)
     try:
-        cycle = rx.find_negative_cycle(directed, lambda data: weight_fn(data))
+        cycle = rx.find_negative_cycle(directed, weight_fn)
     except rx.NullGraph as exc:
         raise nx.NetworkXError("No negative cycles detected.") from exc
     except ValueError as exc:

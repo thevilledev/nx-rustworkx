@@ -354,7 +354,6 @@ NO_AUTO_DISPATCH = frozenset(
         "has_path",
         "in_degree_centrality",
         "is_bipartite",
-        "negative_edge_cycle",
         "out_degree_centrality",
         "single_source_dijkstra",
         "single_source_shortest_path",
