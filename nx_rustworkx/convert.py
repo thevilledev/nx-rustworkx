@@ -177,15 +177,12 @@ def rustworkx_graph_to_nx(rwg: RustworkxGraph):
             for idx, key in rwg.edge_keys.items()
         )
     else:
-        for u_idx, v_idx, data in rwg.rx_graph.weighted_edge_list():
-            u = index_to_node[u_idx]
-            v = index_to_node[v_idx]
-            if isinstance(data, dict):
-                out.add_edge(u, v, **data)
-            elif data is None:
-                out.add_edge(u, v)
-            else:
-                out.add_edge(u, v, weight=data)
+        # 3-tuples rather than add_edge(u, v, **data): NetworkX allows
+        # non-string attribute keys, which keyword expansion rejects.
+        out.add_edges_from(
+            (index_to_node[u_idx], index_to_node[v_idx], _edge_attrs(data))
+            for u_idx, v_idx, data in rwg.rx_graph.weighted_edge_list()
+        )
     if rwg.graph:
         out.graph.update(rwg.graph)
     return out

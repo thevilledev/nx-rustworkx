@@ -576,13 +576,13 @@ class RustworkxGraph:
         self.graph.update(graph_attrs)
         self.node_attrs.update(node_attrs)
         self.add_nodes_from(nodes)
-        for u, v, data in edges:
-            if isinstance(data, dict) and data:
-                self.add_edge(u, v, **data)
-            elif data is None:
-                self.add_edge(u, v)
-            else:
-                self.add_edge(u, v, weight=data)
+        # Re-add at the rustworkx level: routing dict payloads through
+        # add_edge(**attr) would reject NetworkX's non-string attribute keys,
+        # and a rebuild never holds duplicate pairs to merge anyway.
+        node_to_index = self.node_to_index
+        self.rx_graph.add_edges_from(
+            [(node_to_index[u], node_to_index[v], data) for u, v, data in edges]
+        )
 
     def _neighbor_items(self, node: Any):
         idx = self.node_to_index[node]

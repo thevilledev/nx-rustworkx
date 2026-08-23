@@ -258,3 +258,11 @@ def test_metric_closure_isolated_node_raises():
     G.add_node(100)
     with pytest.raises(nx.NetworkXError):
         nx.approximation.metric_closure(G, backend="rustworkx")
+
+
+def test_minimum_spanning_tree_keeps_non_string_attr_keys():
+    G = nx.Graph()
+    G.add_edge(0, 1, weight=1)
+    G[0][1][2] = "x"  # NetworkX allows non-string attribute keys
+    got = nx.minimum_spanning_tree(G, backend="rustworkx")
+    assert got[0][1] == {"weight": 1, 2: "x"}

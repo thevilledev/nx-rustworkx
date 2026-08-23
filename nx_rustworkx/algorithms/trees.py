@@ -42,9 +42,12 @@ def _rebuild(rwg, edges, *, keep_graph_attrs=True):
             attrs = payload if isinstance(payload, dict) else {}
             out.add_edges_from([(index_to_node[u], index_to_node[v], edge_keys[index], attrs)])
     else:
-        for u, v, data in edges:
-            payload = data if isinstance(data, dict) else {}
-            out.add_edge(index_to_node[u], index_to_node[v], **payload)
+        # 3-tuples rather than add_edge(u, v, **data): NetworkX allows
+        # non-string attribute keys, which keyword expansion rejects.
+        out.add_edges_from(
+            (index_to_node[u], index_to_node[v], data if isinstance(data, dict) else {})
+            for u, v, data in edges
+        )
     if keep_graph_attrs and rwg.graph:
         out.graph.update(rwg.graph)
     return out
