@@ -1,7 +1,7 @@
 # Design note: native graph generators
 
-Status: proposed. No code yet — this note settles the one real design decision
-(seeded random generators) and fixes the scope before implementation.
+Status: accepted (2026-08-23). The seeded-RNG policy is settled on the safe
+default described below; no code yet.
 
 All measurements and dispatch-machinery claims below were verified against
 networkx 3.6.1 and rustworkx 0.18.1 (CPython 3.12, Linux, best-of timings).
@@ -22,7 +22,7 @@ Two tiers, one policy decision:
   Pure win; ship without ceremony.
 - **Random generators** (`gnp_random_graph`, `gnm_random_graph`, …) map to
   rustworkx's samplers, which draw from a different RNG than NetworkX. The same
-  seed produces a different — equally valid — graph. **Recommendation:** run
+  seed produces a different — equally valid — graph. **Decision:** run
   them natively for unseeded calls; for seeded calls, fall back to NetworkX's
   sampling by default (which still lands in a native graph, see "the accidental
   Route A" below) and offer one config switch,
@@ -182,7 +182,7 @@ Options considered:
 - **B. Never native for random generators.** Rejected: it forfeits the
   headline win (three orders of magnitude on gnp) for everyone, including
   users who never seed and users happy to opt in.
-- **C. Config-gated (recommended).**
+- **C. Config-gated (decided).**
   - Unseeded calls (`seed` is the global RNG instance): run the rustworkx
     kernel. Nobody can observe which valid sample they got; this is the same
     contract NetworkX itself offers for `seed=None`.
@@ -200,11 +200,11 @@ Options considered:
   - Regardless of the knob: `can_run` declines while the parity harness is
     active (fact 4).
 
-C is recommended because the safe default costs almost nothing — seeded
-pipelines keep NetworkX-speed *generation* (which they have today) while still
-gaining conversion-free *execution* — and the full speedup is one documented
-config line away. It also matches the project's established posture: measured,
-conservative defaults with explicit opt-ins (`min_nodes`,
+C with the safe default is the accepted design: it costs almost nothing —
+seeded pipelines keep NetworkX-speed *generation* (which they have today)
+while still gaining conversion-free *execution* — and the full speedup is one
+documented config line away. It also matches the project's established
+posture: measured, conservative defaults with explicit opt-ins (`min_nodes`,
 `astar_heuristic_check`, `NO_AUTO_DISPATCH`).
 
 A per-call opt-in via NetworkX's `**backend_kwargs` passthrough (e.g.
@@ -322,14 +322,15 @@ forgotten:
 - **`lexicographical_topological_sort`**: rustworkx's string-key requirement
   makes it semantically unsafe to claim.
 
-## Open questions for review
+## Settled and remaining items
 
-1. Default of `native_seeded_generators` — this note argues `False`; flipping
-   to `True` is a one-line change plus README wording if the valid-difference
-   doctrine is judged to cover seeds too.
-2. Should the README quickstart mention
-   `NETWORKX_BACKEND_PRIORITY_GENERATORS`, or does the env-var story stay on
-   the website to keep the README minimal?
-3. Is coupling to `_dispatchable._is_testing` acceptable, or should the CI
-   suite job instead exclude random generators by path? (The flag is narrower
-   and self-healing; the alternative is visible in the workflow file.)
+1. **Settled:** `native_seeded_generators` defaults to `False` (maintainer
+   decision, 2026-08-23). Seeded calls reproduce NetworkX's exact graph by
+   default; flipping to `True` remains a one-line change plus README wording
+   should the valid-difference doctrine ever be extended to seeds.
+2. Implementation-time details, revisitable in PR review without reopening
+   this note: the env-var story lives on the website with the README kept
+   minimal (matching the existing README-points-to-website pattern), and the
+   parity harness is detected via `_dispatchable._is_testing` rather than
+   excluding random generators by path in the workflow (the flag is narrower
+   and fails loudly if NetworkX ever removes it).
