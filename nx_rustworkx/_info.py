@@ -234,8 +234,10 @@ _NATIVE_RANDOM = (
     "back to NetworkX's sampler unless "
     "``nx.config.backends.rustworkx.native_seeded_generators`` is True. With "
     "the opt-in, the same seed reproduces the same graph for a pinned "
-    "rustworkx version. ``create_using`` falls back to NetworkX."
+    "rustworkx version."
 )
+
+_NO_CREATE_USING = " ``create_using`` falls back to NetworkX."
 
 #: name -> additional_docs for the graph constructors, which build a rustworkx
 #: graph directly instead of converting one.
@@ -262,11 +264,23 @@ _GENERATORS = {
     ),
     "grid_2d_graph": _NATIVE_EXACT
     + " Periodic grids and directed ``create_using`` fall back to NetworkX.",
-    "gnp_random_graph": _NATIVE_RANDOM,
+    "gnp_random_graph": _NATIVE_RANDOM + _NO_CREATE_USING,
     "fast_gnp_random_graph": _NATIVE_RANDOM + " Shares ``gnp_random_graph``'s kernel, so "
-    "on this backend the same seed produces the same graph under both names.",
-    "gnm_random_graph": _NATIVE_RANDOM,
-    "dense_gnm_random_graph": _NATIVE_RANDOM + " Shares ``gnm_random_graph``'s kernel.",
+    "on this backend the same seed produces the same graph under both names." + _NO_CREATE_USING,
+    "gnm_random_graph": _NATIVE_RANDOM + _NO_CREATE_USING,
+    "dense_gnm_random_graph": _NATIVE_RANDOM
+    + " Shares ``gnm_random_graph``'s kernel."
+    + _NO_CREATE_USING,
+    "random_regular_graph": _NATIVE_RANDOM + " rustworkx implements the same pairing "
+    "model as NetworkX, so only the RNG differs." + _NO_CREATE_USING,
+    "stochastic_block_model": _NATIVE_RANDOM + " Sets NetworkX's ``partition`` and "
+    "``name`` graph attributes and per-node ``block`` attributes; ``sparse`` only "
+    "selects NetworkX's sampling algorithm and is ignored.",
+    "random_geometric_graph": _NATIVE_RANDOM + " Positions are stored under "
+    "``pos_name`` as NetworkX does; explicit ``pos`` falls back to NetworkX.",
+    "barabasi_albert_graph": _NATIVE_RANDOM + " The growth starts from NetworkX's "
+    "``star_graph(m)`` seed, so the model matches and only the RNG differs; "
+    "``initial_graph`` falls back to NetworkX." + _NO_CREATE_USING,
 }
 
 

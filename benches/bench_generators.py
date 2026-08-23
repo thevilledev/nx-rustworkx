@@ -43,6 +43,14 @@ def _calls(n: int):
     yield "fast_gnp_random_graph", (n, min(0.05, 20 / n)), {"seed": 1}
     yield "gnm_random_graph", (n, 4 * n), {"seed": 1}
     yield "dense_gnm_random_graph", (n, 4 * n), {"seed": 1}
+    yield "random_regular_graph", (4, n), {"seed": 1}
+    yield (
+        "stochastic_block_model",
+        ([n // 2, n - n // 2], [[0.02, 0.005], [0.005, 0.02]]),
+        {"seed": 1},
+    )
+    yield "random_geometric_graph", (n, 0.05), {"seed": 1}
+    yield "barabasi_albert_graph", (n, 3), {"seed": 1}
 
 
 def _time(fn, budget=0.25, max_loops=200):

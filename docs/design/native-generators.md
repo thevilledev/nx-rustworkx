@@ -261,21 +261,35 @@ dispatchables — verified) simply stay on NetworkX.
 | `gnm_random_graph` | `undirected_gnm_random_graph` / `directed_gnm_random_graph` (exact `m` edges, all `n` nodes — verified) |
 | `dense_gnm_random_graph` | `undirected_gnm_random_graph` |
 
-### Tier 3 — parked, with reasons
+### Tier 3 — reviewed after v1; four shipped, the rest parked
 
-- **`barabasi_albert_graph`**: rustworkx's default initial condition differs
-  from NetworkX's star seed — measured 37 vs 36 edges for (n=20, m=2) — so the
-  outputs differ *structurally*, not just by RNG stream. Needs either an
-  explicit `initial_graph` bridge or a documented model difference; neither is
-  v1.
-- **`random_regular_graph`, `stochastic_block_model`, `random_geometric_graph`,
-  `hyperbolic_random_graph`, bipartite `gnmk`**: kernels exist, but each needs
-  a distribution-semantics review (and `random_geometric_graph` needs `pos`
-  node-attribute mapping) before claiming equivalence.
-- **`watts_strogatz_graph` and rewiring models**: no rustworkx kernel.
-- **`hexagonal_lattice_graph`**: kernel exists but NetworkX's tuple labeling
-  and embedding attrs make the mapping fiddly; revisit after `grid_2d_graph`
-  ships the same pattern.
+The distribution-semantics reviews were carried out after v1 landed, with
+these outcomes:
+
+- **`barabasi_albert_graph` — shipped.** rustworkx's default initial condition
+  differs from NetworkX's star seed (measured 37 vs 36 edges for n=20, m=2),
+  but its `initial_graph` parameter accepts NetworkX's `star_graph(m)` seed
+  explicitly. With that bridge the growth process is the same model — verified
+  by matching edge counts across an (n, m) grid including corner cases — and
+  only the RNG differs. A user-supplied `initial_graph` falls back.
+- **`random_regular_graph` — shipped.** rustworkx's kernel documents itself as
+  based on NetworkX's implementation of the pairing model, so the distribution
+  is the same by construction.
+- **`stochastic_block_model` — shipped.** Same model; NetworkX's validations,
+  `partition`/`name` graph attributes, and per-node `block` attributes are
+  replicated. `sparse` only selects NetworkX's sampling algorithm and is
+  ignored.
+- **`random_geometric_graph` — shipped.** Same model; positions land under
+  `pos_name` as NetworkX stores them. An explicit `pos` makes the output
+  deterministic and floating-point-boundary-sensitive, so it falls back.
+- **`hyperbolic_random_graph` — dropped.** NetworkX has no dispatchable
+  function of that name; there is nothing to implement.
+- **`watts_strogatz_graph` and rewiring models — parked**: no rustworkx kernel.
+- **`hexagonal_lattice_graph` — parked**: kernel exists but NetworkX's tuple
+  labeling and embedding attrs make the mapping fiddly.
+- **bipartite `random_graph` / `gnmk_random_graph` — parked**: rustworkx has a
+  p-based bipartite kernel only, and the NetworkX versions set `bipartite`
+  node attributes; needs its own pass.
 
 ## Deliverables
 

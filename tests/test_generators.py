@@ -340,3 +340,143 @@ def test_dense_gnm_declines_degenerate_arguments():
     assert generators.dense_gnm_random_graph.can_run(10, 0) is not True
     assert generators.dense_gnm_random_graph.can_run(10, 2.5) is not True
     assert generators.dense_gnm_random_graph.can_run(10, 5) is True
+
+
+# --- model-family random generators ----------------------------------------
+
+# name -> (args, kwargs) for a representative sampling call.
+MODEL_CALLS = {
+    "random_regular_graph": ((3, 20), {}),
+    "stochastic_block_model": (([5, 5], [[0.8, 0.1], [0.1, 0.8]]), {}),
+    "random_geometric_graph": ((20, 0.4), {}),
+    "barabasi_albert_graph": ((20, 3), {}),
+}
+
+
+@pytest.mark.parametrize("name", sorted(MODEL_CALLS))
+def test_model_generators_unseeded_run_natively(name):
+    args, kwargs = MODEL_CALLS[name]
+    G = getattr(generators, name)(*args, seed=_rng(None), **kwargs)
+    assert isinstance(G, RustworkxGraph)
+    expected_nodes = 10 if name == "stochastic_block_model" else 20
+    assert G.number_of_nodes() == expected_nodes
+
+
+@pytest.mark.parametrize("name", sorted(MODEL_CALLS))
+def test_model_generators_seeded_gate(name):
+    args, kwargs = MODEL_CALLS[name]
+    with pytest.raises(NotImplementedError, match="native_seeded_generators"):
+        getattr(generators, name)(*args, seed=_rng(42), **kwargs)
+
+
+@pytest.mark.parametrize("name", sorted(MODEL_CALLS))
+def test_model_generators_deterministic_with_opt_in(name, native_seeded):
+    args, kwargs = MODEL_CALLS[name]
+    A = getattr(generators, name)(*args, seed=_rng(42), **kwargs)
+    B = getattr(generators, name)(*args, seed=_rng(42), **kwargs)
+    assert {tuple(sorted(e)) for e in A.edges} == {tuple(sorted(e)) for e in B.edges}
+
+
+@pytest.mark.parametrize("name", sorted(MODEL_CALLS))
+def test_model_generators_decline_under_parity_harness(name):
+    args, kwargs = MODEL_CALLS[name]
+    dispatchable = nx.utils.backends._dispatchable
+    func = getattr(generators, name)
+    dispatchable._is_testing = True
+    try:
+        assert func.can_run(*args, **kwargs) is not True
+    finally:
+        dispatchable._is_testing = False
+    assert func.can_run(*args, **kwargs) is True
+
+
+def test_random_regular_is_regular():
+    G = generators.random_regular_graph(4, 30, seed=_rng(None))
+    assert all(degree == 4 for _, degree in G.degree)
+
+
+@pytest.mark.parametrize("d,n", [(3, 3), (-1, 5), (5, 4), (0, 0)])
+def test_random_regular_rejects_like_networkx(d, n):
+    assert_raises_like_networkx("random_regular_graph", d, n)
+
+
+def test_random_regular_d_zero_gives_isolates():
+    G = generators.random_regular_graph(0, 7, seed=_rng(None))
+    assert G.number_of_nodes() == 7
+    assert G.number_of_edges() == 0
+
+
+def test_sbm_sets_networkx_attributes():
+    G = generators.stochastic_block_model([3, 4], [[0.9, 0.2], [0.2, 0.8]], seed=_rng(None))
+    assert G.graph["partition"] == [{0, 1, 2}, {3, 4, 5, 6}]
+    assert G.graph["name"] == "stochastic_block_model"
+    assert G.nodes[0]["block"] == 0
+    assert G.nodes[5]["block"] == 1
+
+
+def test_sbm_nodelist_and_deterministic_probabilities():
+    G = generators.stochastic_block_model(
+        [2, 2], [[1.0, 0.0], [0.0, 1.0]], nodelist=list("abcd"), seed=_rng(None)
+    )
+    assert G.graph["partition"] == [{"a", "b"}, {"c", "d"}]
+    assert sorted(tuple(sorted(e)) for e in G.edges) == [("a", "b"), ("c", "d")]
+
+
+def test_sbm_full_probability_matches_networkx_exactly():
+    got = generators.stochastic_block_model([4], [[1.0]], seed=_rng(None), selfloops=True)
+    expected = nx.stochastic_block_model.orig_func([4], [[1.0]], seed=_rng(1), selfloops=True)
+    assert nx.utils.graphs_equal(rustworkx_graph_to_nx(got), expected)
+
+
+def test_sbm_directed_accepts_asymmetric_p():
+    G = generators.stochastic_block_model(
+        [2, 3], [[0.5, 0.1], [0.9, 0.5]], seed=_rng(None), directed=True
+    )
+    assert G.is_directed()
+
+
+@pytest.mark.parametrize(
+    "args,kwargs",
+    [
+        (([2, 2], [[0.5, 0.1], [0.9, 0.5]]), {}),
+        (([2], [[0.5], [0.5]]), {}),
+        (([2, 2], [[0.5, 2.0], [2.0, 0.5]]), {}),
+        (([2, 2], [[0.5, 0.1], [0.1, 0.5]]), {"nodelist": [1, 2, 3]}),
+        (([2, 2], [[0.5, 0.1], [0.1, 0.5]]), {"nodelist": [1, 1, 2, 3]}),
+    ],
+)
+def test_sbm_rejects_like_networkx(args, kwargs):
+    assert_raises_like_networkx("stochastic_block_model", *args, **kwargs)
+
+
+def test_geometric_stores_positions():
+    G = generators.random_geometric_graph(15, 0.3, seed=_rng(None))
+    assert len(G.nodes[0]["pos"]) == 2
+    H = generators.random_geometric_graph(6, 0.4, dim=3, seed=_rng(None), pos_name="coords")
+    assert len(H.nodes[0]["coords"]) == 3
+
+
+def test_geometric_explicit_pos_falls_back():
+    assert generators.random_geometric_graph.can_run(5, 0.5, pos={0: [0, 0]}) is not True
+    with pytest.raises(NotImplementedError):
+        generators.random_geometric_graph(5, 0.5, pos={0: [0, 0]}, seed=_rng(None))
+
+
+@pytest.mark.parametrize("n,m", [(20, 2), (10, 3), (5, 1), (30, 5), (4, 3)])
+def test_barabasi_albert_edge_count_matches_process(n, m):
+    """The star seed fixes the edge count regardless of RNG."""
+    got = generators.barabasi_albert_graph(n, m, seed=_rng(None))
+    expected = nx.barabasi_albert_graph.orig_func(n, m, seed=_rng(1))
+    assert got.number_of_nodes() == expected.number_of_nodes()
+    assert got.number_of_edges() == expected.number_of_edges()
+
+
+@pytest.mark.parametrize("n,m", [(5, 0), (5, 5), (3, 4)])
+def test_barabasi_albert_rejects_like_networkx(n, m):
+    assert_raises_like_networkx("barabasi_albert_graph", n, m)
+
+
+def test_barabasi_albert_initial_graph_falls_back():
+    assert generators.barabasi_albert_graph.can_run(10, 3, initial_graph=nx.Graph()) is not True
+    with pytest.raises(NotImplementedError):
+        generators.barabasi_albert_graph(10, 3, seed=_rng(None), initial_graph=nx.Graph())
