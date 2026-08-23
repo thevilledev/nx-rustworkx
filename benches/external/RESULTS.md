@@ -118,7 +118,9 @@ NetworkX `7530809bfa1e` (tag networkx-3.6.1), **no benchmark-code changes**: the
 
 ## Target 3 — OSMnx-style city routing demo (forced dispatch)
 
-Graph: **synthetic** (11,920 nodes / 83,764 edges, largest SCC); centrality subgraph n=6,000. Stock arm = `orig_func`, backend arm = `backend="rustworkx"` with a dispatch counter asserting every call.
+Graph: **synthetic** DiGraph (11,920 nodes / 83,764 edges, largest SCC); centrality subgraph n=6,000. Stock arm = `orig_func`, backend arm = `backend="rustworkx"` with a dispatch counter asserting every call.
+
+_Measured at `73888a7`, when the demo still collapsed the street network to a DiGraph with `ox.convert.to_digraph`. Since #19 the backend routes the MultiDiGraph directly and the demo no longer converts; rerun `osmnx_demo.py` to refresh this section._
 
 | workload | NetworkX | rustworkx | speedup | parity |
 |---|---|---|---|---|
@@ -131,7 +133,7 @@ Routing detail: first backend call (includes graph conversion) 124.0 ms; steady 
 
 ## Reading the numbers
 
-- Auto-dispatch declines graphs with n<200 or m<400 (`nx.config.backends.rustworkx.min_nodes/min_edges`) and 22 functions are never auto-selected; an explicit `backend="rustworkx"` bypasses only the size floor. MultiGraph/MultiDiGraph and weighted betweenness always fall back to NetworkX.
+- Auto-dispatch declines graphs with n<200 or m<400 (`nx.config.backends.rustworkx.min_nodes/min_edges`) and 22 functions are never auto-selected; an explicit `backend="rustworkx"` bypasses only the size floor. Weighted betweenness always falls back to NetworkX; MultiGraph/MultiDiGraph dispatch with NetworkX's parallel-edge rules except for the functions NetworkX itself refuses on them.
 - T1 cells time a single cold call (conversion included); T2 cells are asv medians where NetworkX's conversion cache (default on since 3.4) amortizes conversion; T3 reports both cold and steady-state routing.
 - **Cold-call economics**: T1's sub-1x rows are all near-linear functions (component counts, isolates, unweighted BFS all-pairs on dense low-diameter graphs) where a single cold call cannot amortize the O(m) conversion. Superlinear kernels (betweenness, weighted all-pairs) win 5-50x even cold; repeat-call workloads amortize conversion through the cache either way.
 - **Gap found by T2, now fixed**: weighted single-pair `shortest_path` used to auto-dispatch and lose badly (0.02-0.4x on path-shaped and dense graphs) — NetworkX answers a weighted pair with bidirectional Dijkstra, while the backend's single-source paths kernel materializes a path for every visited node. `should_run` now declines single pairs (`benches/bench_single_pair.py` holds the measurements); the goal-stopped `*_length` variants win 1.2-9x everywhere and keep dispatching, and forced `backend=` still runs the paths kernels, which road-network shapes reward (T3: 1.5x).

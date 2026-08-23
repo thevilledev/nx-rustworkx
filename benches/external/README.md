@@ -24,7 +24,7 @@ uv run python benches/external/summarize.py \
 |---|---|---|---|
 | T1 | [networkx/nx-parallel](https://github.com/networkx/nx-parallel) `benchmarks/` (asv) | one-line patch: `backends = ["rustworkx", None]` — the suite passes `backend=` per call | forced dispatch, cold calls, conversion included; side-by-side grid vs stock NetworkX |
 | T2 | [networkx/networkx](https://github.com/networkx/networkx) `benchmarks/` (asv, bundled in the main repo) | **zero code changes** — second arm sets `NETWORKX_BACKEND_PRIORITY=rustworkx` | the honest "existing user code gets faster" test, auto-dispatch rules and all |
-| T3 | [OSMnx](https://github.com/gboeing/osmnx)-style city routing | one line: `ox.convert.to_digraph(G, weight="travel_time")` (OSMnx graphs are MultiDiGraphs, which this backend rejects) | real-world workload: batch routing, weighted closeness, betweenness, pagerank |
+| T3 | [OSMnx](https://github.com/gboeing/osmnx)-style city routing | **zero code changes** — the MultiDiGraph OSMnx hands over is routed as is, parallel ways included | real-world workload: batch routing, weighted closeness, betweenness, pagerank |
 
 Every run proves dispatch actually happened: T1/T3 force `backend="rustworkx"`
 (a wrapper counts calls reaching the backend; T3 asserts on it), and T2 ships a
@@ -42,8 +42,14 @@ row must always be explained by that probe.
   implemented but never auto-selected (`NO_AUTO_DISPATCH` in
   `nx_rustworkx/algorithms/_utils.py`). Explicit `backend="rustworkx"`
   bypasses the size floor, not compatibility.
-- **MultiGraph/MultiDiGraph never dispatch** — OSMnx, momepy and pandapower
-  all hand NetworkX multigraphs, so they need a DiGraph conversion first.
+- **MultiGraph/MultiDiGraph dispatch with NetworkX's parallel-edge rules**
+  (lightest parallel edge for paths, summed for pagerank/hits, collapsed
+  bundles for betweenness and bridges, keyed spanning-tree results), so OSMnx,
+  momepy and pandapower graphs need no DiGraph conversion. The functions
+  NetworkX itself refuses on multigraphs (`core_number`, `cycle_basis`,
+  `max_weight_matching`, `eigenvector_centrality`, ...) plus `complement`, the
+  graph products and `vf2pp_all_isomorphisms` fall back; `nx_rustworkx/_info.py`
+  lists them.
 - **Weighted betweenness falls back** (unweighted is supported), as do
   callable weights, `cutoff=`, betweenness `k=` sampling, and other kwargs
   listed in `nx_rustworkx/_info.py`.
