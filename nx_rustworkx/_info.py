@@ -221,6 +221,22 @@ _FUNCTIONS = {
 }
 
 
+_NATIVE_EXACT = (
+    "Builds the graph natively with a rustworkx kernel and returns a "
+    "rustworkx-backed graph identical to NetworkX's, so later algorithm calls "
+    "skip conversion. MultiGraph ``create_using`` falls back to NetworkX."
+)
+
+_NATIVE_RANDOM = (
+    "Samples natively with rustworkx's RNG and returns a rustworkx-backed "
+    "graph. Unseeded calls always run; a seeded call yields a different "
+    "(equally valid) graph than NetworkX's for the same seed, so it falls "
+    "back to NetworkX's sampler unless "
+    "``nx.config.backends.rustworkx.native_seeded_generators`` is True. With "
+    "the opt-in, the same seed reproduces the same graph for a pinned "
+    "rustworkx version. ``create_using`` falls back to NetworkX."
+)
+
 #: name -> additional_docs for the graph constructors, which build a rustworkx
 #: graph directly instead of converting one.
 _GENERATORS = {
@@ -232,6 +248,25 @@ _GENERATORS = {
         "Constructs a rustworkx-backed empty graph. MultiGraph create_using is rejected."
     ),
     "from_edgelist": "Constructs a rustworkx-backed graph from an edgelist.",
+    "path_graph": _NATIVE_EXACT,
+    "cycle_graph": _NATIVE_EXACT,
+    "star_graph": _NATIVE_EXACT,
+    "complete_graph": _NATIVE_EXACT,
+    "barbell_graph": _NATIVE_EXACT,
+    "lollipop_graph": _NATIVE_EXACT,
+    "binomial_tree": _NATIVE_EXACT,
+    "full_rary_tree": _NATIVE_EXACT,
+    "karate_club_graph": (
+        "Returns a rustworkx-backed graph identical to NetworkX's, including "
+        "the ``club`` node attribute, edge weights, and graph name."
+    ),
+    "grid_2d_graph": _NATIVE_EXACT
+    + " Periodic grids and directed ``create_using`` fall back to NetworkX.",
+    "gnp_random_graph": _NATIVE_RANDOM,
+    "fast_gnp_random_graph": _NATIVE_RANDOM + " Shares ``gnp_random_graph``'s kernel, so "
+    "on this backend the same seed produces the same graph under both names.",
+    "gnm_random_graph": _NATIVE_RANDOM,
+    "dense_gnm_random_graph": _NATIVE_RANDOM + " Shares ``gnm_random_graph``'s kernel.",
 }
 
 
@@ -253,6 +288,7 @@ def get_info():
             "min_nodes": 200,
             "min_edges": 400,
             "astar_heuristic_check": True,
+            "native_seeded_generators": False,
         },
         "functions": functions,
     }

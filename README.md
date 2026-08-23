@@ -38,6 +38,11 @@ The backend implements 105 algorithms. Its measured cutoffs keep small or
 conversion-heavy calls on NetworkX; `backend="rustworkx"` explicitly tries the
 rustworkx implementation.
 
+Generators such as `nx.path_graph` and `nx.gnp_random_graph` can construct
+rustworkx-backed graphs directly, so whole pipelines skip conversion; the
+[usage guide](https://ville.dev/nx-rustworkx/usage.html) covers enabling
+generator dispatch.
+
 ## Documentation
 
 Usage, configuration, supported algorithms, caveats, and benchmarks:
@@ -49,6 +54,9 @@ Usage, configuration, supported algorithms, caveats, and benchmarks:
 - No custom weight callables.
 - The rustworkx-backed graph object does not implement drawing or I/O.
 - Some valid results may differ in ordering or floating-point rounding.
+- Seeded random generators reproduce NetworkX's graphs unless
+  `native_seeded_generators` is enabled; the opt-in draws from rustworkx's
+  RNG, so the same seed gives a different, equally valid graph.
 
 The [algorithm reference](https://ville.dev/nx-rustworkx/algorithms.html) lists
 the exact behavior and fallback conditions.

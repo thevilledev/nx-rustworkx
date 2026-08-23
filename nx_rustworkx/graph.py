@@ -391,11 +391,16 @@ class RustworkxGraph:
         self.add_node(u_of_edge)
         self.add_node(v_of_edge)
         payload = dict(attr) if attr else None
-        self.rx_graph.add_edge(
-            self.node_to_index[u_of_edge],
-            self.node_to_index[v_of_edge],
-            payload,
-        )
+        u_idx = self.node_to_index[u_of_edge]
+        v_idx = self.node_to_index[v_of_edge]
+        rx_graph = self.rx_graph
+        # Kernel-built containers report multigraph=True even though they hold
+        # no parallel edges; NetworkX add_edge semantics replace, never add a
+        # parallel edge, so update in place there.
+        if rx_graph.multigraph and rx_graph.has_edge(u_idx, v_idx):
+            rx_graph.update_edge(u_idx, v_idx, payload)
+        else:
+            rx_graph.add_edge(u_idx, v_idx, payload)
         self.__networkx_cache__.clear()
 
     def add_edges_from(self, ebunch_to_add, **attr):

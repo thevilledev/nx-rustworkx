@@ -132,6 +132,60 @@ scores = nx.betweenness_centrality(G)</code></pre>
         <code>nx.Graph</code> replacement: there is no drawing, I/O, or multigraph.
       </p>
 
+      <h2 id="generators">Generators</h2>
+
+      <p>
+        Graph generators can build rustworkx-backed graphs directly, so a
+        pipeline never converts at all. Generator dispatch has its own
+        priority list, separate from the algorithm one:
+      </p>
+
+      <pre><code>NETWORKX_BACKEND_PRIORITY_GENERATORS=rustworkx python your_script.py</code></pre>
+
+      <p>Or in the running process:</p>
+
+      <pre><code>nx.config.backend_priority.generators = ["rustworkx"]
+
+G = nx.gnp_random_graph(20_000, 0.001)   # rustworkx-backed, sampled in Rust
+H = nx.path_graph(100_000)               # rustworkx-backed, built in Rust</code></pre>
+
+      <p>
+        Deterministic generators (<code>path_graph</code>,
+        <code>complete_graph</code>, <code>grid_2d_graph</code>, &hellip;)
+        produce exactly the graph NetworkX would, verified against NetworkX's
+        own test suite. Generators without a native kernel still return a
+        backend graph whenever their NetworkX implementation builds on
+        <code>empty_graph</code>; NetworkX's own code runs, mutating a
+        rustworkx-backed graph.
+      </p>
+
+      <h3 id="seeded">Seeded random generators</h3>
+
+      <p>
+        rustworkx samples with its own RNG, so for the same seed it draws a
+        different &mdash; equally valid &mdash; graph than NetworkX. By
+        default nx-rustworkx protects seeded reproducibility: a call with an
+        explicit <code>seed</code> falls back to NetworkX's sampler (still
+        returning a rustworkx-backed graph under generator priority), while
+        unseeded calls sample natively. Opt into native seeded sampling with:
+      </p>
+
+      <pre><code>nx.config.backends.rustworkx.native_seeded_generators = True</code></pre>
+
+      <p>
+        With the opt-in, the same seed reproduces the same graph on any
+        platform for a pinned rustworkx version &mdash; but never NetworkX's
+        graph for that seed, and rustworkx upgrades may change the stream.
+        On this backend <code>fast_gnp_random_graph</code> shares
+        <code>gnp_random_graph</code>'s kernel, so both names give the same
+        graph for the same seed.
+      </p>
+
+      <p>
+        Pair generator priority with <a href="#fallback">fallback</a> if the
+        pipeline also calls functions the backend does not implement.
+      </p>
+
       <h2 id="fallback">Fallback from a backend graph</h2>
 
       <p>
