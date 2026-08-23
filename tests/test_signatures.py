@@ -22,6 +22,7 @@ POSITIONAL = (inspect.Parameter.POSITIONAL_ONLY, inspect.Parameter.POSITIONAL_OR
 _LOOKUP_MODULES = (
     nx.algorithms.connectivity.stoerwagner,
     nx.approximation,
+    nx.bipartite,
 )
 
 
