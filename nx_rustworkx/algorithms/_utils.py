@@ -235,11 +235,14 @@ def require_directed(rwg) -> None:
 NO_AUTO_DISPATCH = frozenset(
     {
         "all_pairs_shortest_path",
+        "all_shortest_paths",
+        "bellman_ford_path",
         "bidirectional_shortest_path",
         "complement",
         "cycle_basis",
         "degree_centrality",
         "descendants_at_distance",
+        "dijkstra_path",
         "find_cycle",
         "find_negative_cycle",
         "group_degree_centrality",

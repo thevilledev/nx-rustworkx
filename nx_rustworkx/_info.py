@@ -49,7 +49,10 @@ _FUNCTIONS = {
     # --- link analysis ----------------------------------------------------
     "pagerank": ["Numeric values may differ slightly from NetworkX."],
     # --- shortest paths ---------------------------------------------------
-    "shortest_path": [],
+    "shortest_path": [
+        "Single source-target pairs decline automatic dispatch: NetworkX's "
+        'bidirectional search wins there. Pass ``backend="rustworkx"`` to force.'
+    ],
     "shortest_path_length": [],
     "single_source_dijkstra": [_NO_CUTOFF],
     "single_source_dijkstra_path": [_NO_CUTOFF],
@@ -71,7 +74,9 @@ _FUNCTIONS = {
     "all_pairs_shortest_path_length": [_NO_CUTOFF],
     "all_shortest_paths": ["Only the ``dijkstra`` method; ``bellman-ford`` falls back."],
     "single_source_all_shortest_paths": [
-        "Only the ``dijkstra`` method; ``bellman-ford`` falls back."
+        "Only the ``dijkstra`` method; ``bellman-ford`` falls back.",
+        "Conversion covers the whole graph, so NetworkX wins when only a "
+        "small component is reachable from the source.",
     ],
     "dijkstra_path": [],
     "dijkstra_path_length": [],

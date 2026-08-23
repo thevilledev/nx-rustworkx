@@ -70,20 +70,26 @@
 
       <p>
         Explicit <code>backend="rustworkx"</code> calls can reach every
-        implementation above. Automatic backend priority declines 22 functions
+        implementation above. Automatic backend priority declines 25 functions
         for which conversion or result remapping is usually slower than NetworkX:
       </p>
 
       <ul>
         <li><strong>Early exit favors NetworkX:</strong> <code>has_path</code>, <code>bidirectional_shortest_path</code>, <code>descendants_at_distance</code>, <code>is_bipartite</code>, <code>find_cycle</code>, <code>is_maximal_matching</code>.</li>
-        <li><strong>Python result construction dominates:</strong> <code>complement</code>, <code>all_pairs_shortest_path</code>, the <code>single_source_*</code> and <code>single_target_*</code> path variants.</li>
+        <li><strong>Python result construction dominates:</strong> <code>complement</code>, <code>all_pairs_shortest_path</code>, <code>all_shortest_paths</code>, <code>dijkstra_path</code>, <code>bellman_ford_path</code>, the <code>single_source_*</code> and <code>single_target_*</code> path variants &mdash; the paths kernels materialize a path for every visited node, which is quadratic on high-diameter graphs.</li>
         <li><strong>The kernel is cheaper than remapping:</strong> degree centrality variants, <code>cycle_basis</code>, negative-cycle discovery, weak connectivity, and <code>single_source_dijkstra</code>.</li>
       </ul>
 
       <p>
-        Unweighted single source-target forms of <code>shortest_path</code> and
-        <code>shortest_path_length</code> are also declined automatically;
-        weighted pairs run the kernel with early termination and dispatch.
+        Single source-target forms of <code>shortest_path</code> are declined
+        automatically whether weighted or not: NetworkX answers a pair with a
+        bidirectional search that visits a fraction of the graph. The
+        goal-stopped <em>length</em> kernels have no such handicap, so weighted
+        single-pair <code>shortest_path_length</code>,
+        <code>dijkstra_path_length</code>, and
+        <code>bellman_ford_path_length</code> keep dispatching &mdash; measured
+        1.2&ndash;9&times; faster across path, dense, and road-network shapes
+        (<code>benches/bench_single_pair.py</code>).
       </p>
 
       <p>

@@ -283,14 +283,20 @@ def main() -> int:
         "the O(m) conversion. Superlinear kernels (betweenness, weighted "
         "all-pairs) win 5-50x even cold; repeat-call workloads amortize "
         "conversion through the cache either way.",
-        "- **Known gap found by T2**: weighted single-pair `shortest_path` "
-        "auto-dispatches but can lose badly (0.02-0.4x on path-shaped and "
-        "dense graphs). NetworkX answers a weighted pair with bidirectional "
-        "Dijkstra, while the backend runs a full single-source kernel whose "
-        "rustworkx PathMapping materializes paths for every visited node and "
-        "pays a per-edge Python weight callback. On road-network shapes it "
-        "still wins modestly (T3: 1.5x), so the fix is should_run tuning or a "
-        "lengths+predecessor kernel, not removal.",
+        "- **Gap found by T2, now fixed**: weighted single-pair "
+        "`shortest_path` used to auto-dispatch and lose badly (0.02-0.4x on "
+        "path-shaped and dense graphs) — NetworkX answers a weighted pair "
+        "with bidirectional Dijkstra, while the backend's single-source paths "
+        "kernel materializes a path for every visited node. `should_run` now "
+        "declines single pairs (`benches/bench_single_pair.py` holds the "
+        "measurements); the goal-stopped `*_length` variants win 1.2-9x "
+        "everywhere and keep dispatching, and forced `backend=` still runs "
+        "the paths kernels, which road-network shapes reward (T3: 1.5x).",
+        "- `single_source_all_shortest_paths` keeps dispatching deliberately: "
+        "it wins 6.9x/1.3x on connected path/dense shapes; the "
+        "many-components row flags a sub-millisecond loss because only the "
+        "source's 5-node component is reachable while conversion covers the "
+        "whole graph.",
         "- Same machine, same process pattern for both arms in every target; "
         "still: single-machine numbers, expect variance.",
         "",
