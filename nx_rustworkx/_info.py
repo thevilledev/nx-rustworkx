@@ -221,7 +221,7 @@ _FUNCTIONS = {
     ],
     "isolates": [],
     "number_of_isolates": [],
-    "transitivity": [],
+    "transitivity": ["Undirected graphs only; NetworkX's directed value falls back."],
     # --- matching, coloring, trees ----------------------------------------
     "max_weight_matching": [
         "Undirected graphs only. rustworkx's blossom kernel takes integer edge "
