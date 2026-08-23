@@ -49,7 +49,10 @@ _FUNCTIONS = {
     # --- link analysis ----------------------------------------------------
     "pagerank": ["Numeric values may differ slightly from NetworkX."],
     # --- shortest paths ---------------------------------------------------
-    "shortest_path": [],
+    "shortest_path": [
+        "Single source-target pairs decline automatic dispatch: NetworkX's "
+        'bidirectional search wins there. Pass ``backend="rustworkx"`` to force.'
+    ],
     "shortest_path_length": [],
     "single_source_dijkstra": [_NO_CUTOFF],
     "single_source_dijkstra_path": [_NO_CUTOFF],

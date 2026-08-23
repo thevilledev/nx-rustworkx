@@ -129,19 +129,20 @@ def test_shortest_path_declines_where_networkx_wins():
     )
     # Unweighted paths are cheaper to build in NetworkX than to remap.
     assert BackendInterface.should_run("shortest_path", (G,), {"source": 0}) is not True
-    # A weighted pair runs the kernel with early termination, which wins.
-    assert (
-        BackendInterface.should_run(
-            "shortest_path", (G,), {"source": 0, "target": 9, "weight": "weight"}
-        )
-        is True
-    )
-    assert (
-        BackendInterface.should_run(
-            "shortest_path_length", (G,), {"source": 0, "target": 9, "weight": "weight"}
-        )
-        is True
-    )
+    # A weighted pair loses too: the single-source paths kernel materializes a
+    # path per visited node, which NetworkX's bidirectional Dijkstra never has
+    # to do (measured in benches/bench_single_pair.py).
+    weighted_pair = {"source": 0, "target": 9, "weight": "weight"}
+    result = BackendInterface.should_run("shortest_path", (G,), weighted_pair)
+    assert result is not True
+    assert "bidirectional Dijkstra" in str(result)
+    # Forced dispatch must remain possible.
+    assert BackendInterface.can_run("shortest_path", (G,), weighted_pair) is True
+    # The goal-stopped lengths kernel has no path to materialize and measures
+    # faster than NetworkX on every benchmarked shape, so it keeps dispatching,
+    # as do the source-only and all-pairs weighted forms of shortest_path.
+    assert BackendInterface.should_run("shortest_path_length", (G,), weighted_pair) is True
+    assert BackendInterface.should_run("shortest_path", (G,), {"weight": "weight"}) is True
     # Weighted paths and any lengths are worth converting for.
     assert (
         BackendInterface.should_run("shortest_path", (G,), {"source": 0, "weight": "weight"})
