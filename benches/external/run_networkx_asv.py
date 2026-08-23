@@ -43,13 +43,15 @@ DRUG_PATCHES = [
     ('        "Drug Interaction network",\n', ""),
 ]
 
+# asv matches these against "name(param, ...)" for parameterized benchmarks
+# and against the bare name otherwise, hence the (\(|$) anchors.
 BENCH_PATTERNS = [
     r"benchmark_algorithms\.UndirectedAlgorithmBenchmarks\."
-    r"time_(betweenness_centrality|pagerank|connected_components)$",
-    r"benchmark_algorithms\.DirectedAlgorithmBenchmarks\.time_tarjan_scc$",
-    r"benchmark_algorithms\.WeightedGraphBenchmark\.time_shortest_path$",
+    r"time_(betweenness_centrality|pagerank|connected_components)(\(|$)",
+    r"benchmark_algorithms\.DirectedAlgorithmBenchmarks\.time_tarjan_scc(\(|$)",
+    r"benchmark_algorithms\.WeightedGraphBenchmark\.time_shortest_path(\(|$)",
     r"benchmark_many_components\.ManyComponentsBenchmark\."
-    r"time_single_source_all_shortest_paths$",
+    r"time_single_source_all_shortest_paths(\(|$)",
 ]
 
 

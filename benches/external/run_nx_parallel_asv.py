@@ -110,8 +110,20 @@ def main() -> int:
     _common.patch_file(
         suite / "benchmarks" / "benchmarks" / "common.py", patches, "nx-parallel"
     )
+    # Upstream bug at the pinned rev: both component-benchmark setups pass
+    # seed= to get_cached_gnp_random_graph, which has no such kwarg (the
+    # module-global seed is used internally), so they fail on every backend
+    # including stock NetworkX. Drop the bogus kwarg.
+    _common.patch_file(
+        suite / "benchmarks" / "benchmarks" / "bench_components.py",
+        [("num_nodes, edge_prob, seed=seed, is_directed=True",
+          "num_nodes, edge_prob, is_directed=True", 2)],
+        "fix upstream seed kwarg bug",
+    )
 
-    bench_re = args.bench or "time_({})$".format("|".join(SUPPORTED))
+    # asv matches the regex against "name(param, ...)" for parameterized
+    # benchmarks, so anchor on the opening paren rather than end-of-string.
+    bench_re = args.bench or r"time_({})(\(|$)".format("|".join(SUPPORTED))
     bench_dir = suite / "benchmarks"
     env = _common.clean_env()
     _common.run([sys.executable, "-m", "asv", "machine", "--yes"], cwd=bench_dir, env=env)

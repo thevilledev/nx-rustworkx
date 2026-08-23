@@ -61,14 +61,18 @@ def clone_at(url: str, rev: str, workdir: Path, name: str) -> Path:
     return dest
 
 
-def patch_file(path: Path, replacements: list[tuple[str, str]], label: str) -> None:
-    """Apply exact-string replacements, failing loudly on upstream drift."""
+def patch_file(path: Path, replacements: list[tuple], label: str) -> None:
+    """Apply exact-string replacements, failing loudly on upstream drift.
+
+    Each replacement is ``(old, new)`` or ``(old, new, expected_count)``.
+    """
     text = path.read_text()
-    for old, new in replacements:
+    for old, new, *rest in replacements:
+        expected = rest[0] if rest else 1
         count = text.count(old)
-        if count != 1:
+        if count != expected:
             raise SystemExit(
-                f"{label}: expected exactly one occurrence of {old!r} in {path}, "
+                f"{label}: expected {expected} occurrence(s) of {old!r} in {path}, "
                 f"found {count}. Upstream changed; update the pin or the patch."
             )
         text = text.replace(old, new)
