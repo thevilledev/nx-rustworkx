@@ -3,7 +3,7 @@
   <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="description" content="The 110 NetworkX algorithms supported by nx-rustworkx, with compatibility notes.">
+    <meta name="description" content="The 111 NetworkX algorithms supported by nx-rustworkx, with compatibility notes.">
     <meta name="theme-color" content="#ffffff">
     <meta property="og:type" content="website">
     <meta property="og:title" content="nx-rustworkx algorithm reference">
@@ -31,7 +31,7 @@
       <h1>Algorithms</h1>
 
       <p>
-        The backend implements 110 NetworkX algorithms plus constructors and
+        The backend implements 111 NetworkX algorithms plus constructors and
         generators for rustworkx-backed graphs. Anything outside this list
         stays on NetworkX when the input is still an ordinary NetworkX graph.
       </p>
@@ -53,7 +53,7 @@
             <tr><th scope="row">Distance measures</th><td><code>eccentricity</code>, <code>diameter</code>, <code>radius</code>, <code>center</code>, <code>periphery</code></td></tr>
             <tr><th scope="row">Connectivity</th><td><code>is_connected</code>, <code>is_weakly_connected</code>, <code>is_strongly_connected</code>, <code>is_semiconnected</code>, <code>connected_components</code>, <code>weakly_connected_components</code>, <code>strongly_connected_components</code>, <code>number_connected_components</code>, <code>number_weakly_connected_components</code>, <code>number_strongly_connected_components</code>, <code>node_connected_component</code>, <code>articulation_points</code>, <code>bridges</code>, <code>biconnected_components</code>, <code>condensation</code>, <code>stoer_wagner</code></td></tr>
             <tr><th scope="row">Cycles and cores</th><td><code>simple_cycles</code>, <code>cycle_basis</code>, <code>find_cycle</code>, <code>chain_decomposition</code>, <code>core_number</code></td></tr>
-            <tr><th scope="row">Structure</th><td><code>is_bipartite</code>, <code>is_planar</code>, <code>isolates</code>, <code>number_of_isolates</code>, <code>transitivity</code></td></tr>
+            <tr><th scope="row">Structure</th><td><code>is_bipartite</code>, <code>bipartite.color</code>, <code>is_planar</code>, <code>isolates</code>, <code>number_of_isolates</code>, <code>transitivity</code></td></tr>
             <tr><th scope="row">Matching and coloring</th><td><code>max_weight_matching</code>, <code>is_matching</code>, <code>is_maximal_matching</code>, <code>greedy_color</code></td></tr>
             <tr><th scope="row">Trees</th><td><code>minimum_spanning_tree</code>, <code>minimum_spanning_edges</code>, <code>steiner_tree</code>, <code>metric_closure</code></td></tr>
             <tr><th scope="row">Operators</th><td><code>complement</code>, <code>cartesian_product</code>, <code>tensor_product</code>, <code>line_graph</code></td></tr>

@@ -198,6 +198,7 @@ def _calls(graphs, n):
     ecc_graph = nx.connected_watts_strogatz_graph(min(n, 400), 4, 0.3, seed=1)
     for name in ("eccentricity", "diameter", "radius", "center", "periphery"):
         yield name, ecc_graph, (), {}
+    yield "color", nx.complete_bipartite_graph(n // 2, n - n // 2), (), {}
     # stoer_wagner needs a connected, non-negatively weighted graph.
     connected = nx.connected_watts_strogatz_graph(min(n, 300), 4, 0.3, seed=1)
     for u, v in connected.edges():
@@ -239,7 +240,11 @@ def main() -> int:
     graphs = _graphs(args.nodes, args.seed)
     rows = []
     for name, G, extra, kwargs in _calls(graphs, args.nodes):
-        func = getattr(nx, name, None) or getattr(nx.approximation, name, None)
+        func = (
+            getattr(nx, name, None)
+            or getattr(nx.approximation, name, None)
+            or getattr(nx.bipartite, name, None)
+        )
         if func is None:
             continue
         print(f"  timing {name} ...", file=sys.stderr, flush=True)

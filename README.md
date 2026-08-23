@@ -34,7 +34,7 @@ nx.config.backend_priority = ["rustworkx"]
 scores = nx.betweenness_centrality(G)
 ```
 
-The backend implements 110 algorithms. Its measured cutoffs keep small or
+The backend implements 111 algorithms. Its measured cutoffs keep small or
 conversion-heavy calls on NetworkX; `backend="rustworkx"` explicitly tries the
 rustworkx implementation.
 

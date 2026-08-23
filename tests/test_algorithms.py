@@ -147,3 +147,28 @@ def test_weighted_closeness_matches():
         "closeness_centrality", (nx.path_graph(3),), {"distance": lambda u, v, d: 1}
     )
     assert reason is not True
+
+
+def test_bipartite_color_matches():
+    for G in (
+        nx.path_graph(8),
+        nx.complete_bipartite_graph(3, 4),
+        nx.balanced_tree(3, 3),
+        nx.DiGraph([(0, 1), (2, 1)]),
+    ):
+        got = nx.bipartite.color(G, backend="rustworkx")
+        assert got == nx.bipartite.color.orig_func(G)
+
+
+def test_bipartite_color_isolates_get_zero():
+    G = nx.Graph([("a", "b")])
+    G.add_nodes_from(["x", "y"])
+    got = nx.bipartite.color(G, backend="rustworkx")
+    assert got == nx.bipartite.color.orig_func(G)
+    assert got["x"] == 0 and got["y"] == 0
+
+
+def test_bipartite_color_raises_like_networkx():
+    for G in (nx.cycle_graph(5), nx.Graph([(0, 0)]), nx.karate_club_graph()):
+        with pytest.raises(nx.NetworkXError, match=r"Graph is not bipartite\."):
+            nx.bipartite.color(G, backend="rustworkx")

@@ -2,6 +2,7 @@
 
 from __future__ import annotations
 
+import networkx as nx
 import rustworkx as rx
 
 from nx_rustworkx.algorithms._utils import (
@@ -11,7 +12,7 @@ from nx_rustworkx.algorithms._utils import (
     remap_nodes,
 )
 
-__all__ = ["is_bipartite", "is_planar", "isolates", "number_of_isolates", "transitivity"]
+__all__ = ["color", "is_bipartite", "is_planar", "isolates", "number_of_isolates", "transitivity"]
 
 
 def _can_run(G, *args, **kwargs):
@@ -65,3 +66,19 @@ def transitivity(G):
 
 
 transitivity.can_run = _can_run
+
+
+def color(G):
+    """Two-coloring of a bipartite graph; isolates get 0 as NetworkX assigns."""
+    rwg = as_rw_graph(G)
+    two = rx.two_color(rwg.rx_graph)
+    if two is None:
+        raise nx.NetworkXError("Graph is not bipartite.")
+    index_to_node = rwg.index_to_node
+    out = {index_to_node[i]: c for i, c in two.items()}
+    for i in rx.isolates(rwg.rx_graph):
+        out[index_to_node[i]] = 0
+    return out
+
+
+color.can_run = _can_run

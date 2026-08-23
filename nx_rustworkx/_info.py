@@ -176,6 +176,11 @@ _FUNCTIONS = {
     ],
     "core_number": [],
     # --- structure ---------------------------------------------------------
+    "color": [
+        "Bipartite two-coloring via rustworkx; isolates are colored 0 as NetworkX assigns.",
+        "A two-coloring is unique per component only up to swapping the two "
+        "colors, so a component may be colored oppositely to NetworkX's choice.",
+    ],
     "is_bipartite": [],
     "is_planar": ["Directed input is checked on its undirected form, as NetworkX does."],
     "isolates": [],
