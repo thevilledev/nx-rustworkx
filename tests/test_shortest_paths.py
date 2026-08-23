@@ -359,3 +359,16 @@ def test_single_source_all_shortest_paths_weighted_ties():
         for t, ps in nx.single_source_all_shortest_paths.orig_func(G, 0, weight="weight")
     }
     assert got == expected
+
+
+def test_unknown_method_raises_even_unweighted():
+    # NetworkX validates method before weight decides whether it matters.
+    G = nx.path_graph(4)
+    with pytest.raises(ValueError):
+        nx.shortest_path(G, 0, 3, method="bogus", backend="rustworkx")
+    with pytest.raises(ValueError):
+        nx.shortest_path_length(G, 0, 3, method="bogus", backend="rustworkx")
+    with pytest.raises(ValueError):
+        nx.shortest_path(G, method="bogus", backend="rustworkx")
+    # A valid but irrelevant method still runs unweighted, as in NetworkX.
+    assert nx.shortest_path(G, 0, 3, method="bellman-ford", backend="rustworkx") == [0, 1, 2, 3]
