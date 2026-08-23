@@ -155,9 +155,9 @@ def steiner_tree(G, terminal_nodes, weight="weight", method=None):
     graph, weight_fn = _tree_container(rwg, weight)
     tree = rx.steiner_tree(graph, terminals, weight_fn)
     out = _rebuild(rwg, tree.weighted_edge_list())
-    # NetworkX returns only the nodes the tree actually spans.
+    # NetworkX returns only the nodes the tree actually spans: a lone terminal
+    # spans nothing, so it is absent from NetworkX's result too.
     out.remove_nodes_from([node for node in list(out) if out.degree(node) == 0])
-    out.add_nodes_from(node for node in terminal_nodes if node not in out)
     return out
 
 
