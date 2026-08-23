@@ -194,6 +194,10 @@ def _calls(graphs, n):
         (),
         {},
     )
+    # The eccentricity family needs a connected graph.
+    ecc_graph = nx.connected_watts_strogatz_graph(min(n, 400), 4, 0.3, seed=1)
+    for name in ("eccentricity", "diameter", "radius", "center", "periphery"):
+        yield name, ecc_graph, (), {}
     # stoer_wagner needs a connected, non-negatively weighted graph.
     connected = nx.connected_watts_strogatz_graph(min(n, 300), 4, 0.3, seed=1)
     for u, v in connected.edges():

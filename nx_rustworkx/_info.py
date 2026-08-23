@@ -11,6 +11,13 @@ _TIE_BREAK = (
     "The answer is one of several equally valid ones, and rustworkx may pick a "
     "different one than NetworkX."
 )
+_ECC_EXTREMES = (
+    "Computed from rustworkx's all-pairs distance matrix. A precomputed ``e`` "
+    "falls back to NetworkX; ``usebounds`` only selects NetworkX's algorithm "
+    "and is ignored. Automatic dispatch declines graphs past ~4096 nodes "
+    'because the matrix is quadratic in memory; ``backend="rustworkx"`` runs '
+    "anyway."
+)
 
 #: name -> the caveats that apply on top of ``_CONVERTED``.
 _FUNCTIONS = {
@@ -96,6 +103,18 @@ _FUNCTIONS = {
     "average_shortest_path_length": [
         "Unweighted only; ``weight`` and other ``method`` values fall back."
     ],
+    # --- distance measures -------------------------------------------------
+    "eccentricity": [
+        "Computed from rustworkx's all-pairs distance matrix; a single node "
+        "or nbunch runs per-source lengths instead.",
+        "A supplied ``sp`` falls back to NetworkX.",
+        "Automatic dispatch declines graphs past ~4096 nodes because the "
+        'matrix is quadratic in memory; ``backend="rustworkx"`` runs anyway.',
+    ],
+    "diameter": [_ECC_EXTREMES],
+    "radius": [_ECC_EXTREMES],
+    "center": [_ECC_EXTREMES],
+    "periphery": [_ECC_EXTREMES],
     # --- DAG and traversal ------------------------------------------------
     "is_directed_acyclic_graph": [],
     "topological_sort": [_TIE_BREAK],

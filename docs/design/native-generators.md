@@ -338,7 +338,9 @@ Recorded here so the scope stays honest; each is parked on its own merits, not
 forgotten:
 
 - **Eccentricity / diameter family**: needs an O(n²)-memory guard before any
-  all-pairs-based implementation is safe to auto-dispatch.
+  all-pairs-based implementation is safe to auto-dispatch. (Since shipped
+  separately: `should_run` declines the all-pairs matrix past ~4096 nodes and
+  explicit `backend="rustworkx"` accepts the cost.)
 - **Multigraph support**: a real scope decision — the README currently sells
   its absence as a feature — not a generator concern.
 - **`lexicographical_topological_sort`**: rustworkx's string-key requirement
