@@ -5,7 +5,10 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
-from nx_rustworkx._compat import immediate_dominators_includes_start
+from nx_rustworkx._compat import (
+    dominance_frontiers_includes_start,
+    immediate_dominators_includes_start,
+)
 from nx_rustworkx.algorithms._utils import (
     as_directed_rx,
     as_rw_graph,
@@ -25,6 +28,7 @@ __all__ = [
     "descendants_at_distance",
     "dag_longest_path",
     "dag_longest_path_length",
+    "dominance_frontiers",
     "transitive_reduction",
     "immediate_dominators",
 ]
@@ -228,3 +232,41 @@ def immediate_dominators(G, start):
 
 
 immediate_dominators.can_run = can_run_directed
+
+
+def dominance_frontiers(G, start):
+    """Return the dominance frontier of every node reachable from ``start``."""
+    rwg = as_rw_graph(G)
+    require_directed(rwg)
+    if start not in rwg.node_to_index:
+        raise nx.NetworkXError("start is not in G")
+    index = rwg.node_to_index[start]
+    index_to_node = rwg.index_to_node
+    # rustworkx also reports frontiers for unreachable nodes that feed into the
+    # reachable region; NetworkX only reports nodes reachable from start.
+    reachable = _reachable_indices(rwg, index)
+    raw = rx.dominance_frontiers(rwg.rx_graph, index)
+    frontiers = {node: set(frontier) for node, frontier in raw.items() if node in reachable}
+    # rustworkx never puts the start node in a frontier, matching NetworkX 3.4.
+    # NetworkX 3.5 follows the standard definition, where start belongs in
+    # DF(n) for every n that dominates one of start's predecessors (start has
+    # no strict dominator), so walk each reachable predecessor's dominator
+    # chain and put it back.
+    if dominance_frontiers_includes_start():
+        idom = rx.immediate_dominators(rwg.rx_graph, index)
+        for pred in rwg.rx_graph.predecessor_indices(index):
+            node = int(pred)
+            if node not in frontiers:
+                continue  # unreachable predecessors are outside the dominator tree
+            while True:
+                frontiers[node].add(index)
+                if node == index:
+                    break
+                node = int(idom[node])
+    return {
+        index_to_node[node]: {index_to_node[i] for i in frontier}
+        for node, frontier in frontiers.items()
+    }
+
+
+dominance_frontiers.can_run = can_run_directed

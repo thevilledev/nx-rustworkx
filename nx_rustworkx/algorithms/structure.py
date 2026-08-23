@@ -11,7 +11,7 @@ from nx_rustworkx.algorithms._utils import (
     remap_nodes,
 )
 
-__all__ = ["is_bipartite", "isolates", "number_of_isolates", "transitivity"]
+__all__ = ["is_bipartite", "is_planar", "isolates", "number_of_isolates", "transitivity"]
 
 
 def _can_run(G, *args, **kwargs):
@@ -26,6 +26,18 @@ def is_bipartite(G):
 
 
 is_bipartite.can_run = _can_run
+
+
+def is_planar(G):
+    """Return True if the graph can be drawn without edge crossings."""
+    rwg = as_rw_graph(G)
+    # rustworkx's planarity check takes an undirected graph; edge direction
+    # does not change planarity.
+    graph = rwg.to_undirected().rx_graph if rwg.is_directed() else rwg.rx_graph
+    return bool(rx.is_planar(graph))
+
+
+is_planar.can_run = _can_run
 
 
 def isolates(G):

@@ -5,6 +5,7 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
+from nx_rustworkx._compat import metric_closure_is_deprecated
 from nx_rustworkx.algorithms._utils import (
     as_rw_graph,
     can_run_undirected,
@@ -13,7 +14,7 @@ from nx_rustworkx.algorithms._utils import (
     require_undirected,
 )
 
-__all__ = ["minimum_spanning_tree", "minimum_spanning_edges", "steiner_tree"]
+__all__ = ["metric_closure", "minimum_spanning_tree", "minimum_spanning_edges", "steiner_tree"]
 
 _SUPPORTED_MST_ALGORITHMS = {"kruskal", "prim", "boruvka"}
 
@@ -122,3 +123,52 @@ def steiner_tree(G, terminal_nodes, weight="weight", method=None):
 
 
 steiner_tree.can_run = _can_run_steiner_tree
+
+
+def _can_run_metric_closure(G, weight="weight", **kwargs):
+    reason = can_run_undirected(G)
+    if reason is not True:
+        return reason
+    if callable(weight):
+        return "nx-rustworkx does not support custom weight callables"
+    if G.number_of_nodes() < 2:
+        return "rustworkx metric_closure needs at least two nodes"
+    return True
+
+
+def metric_closure(G, weight="weight"):
+    """Return the metric closure: a complete graph of shortest-path distances."""
+    if metric_closure_is_deprecated():
+        # NetworkX emits this inside the function body the backend replaces, so
+        # repeat it here to keep the deprecation visible.
+        import warnings
+
+        warnings.warn(
+            "metric_closure is deprecated and will be removed in NetworkX 3.8.\n"
+            "Use nx.all_pairs_shortest_path_length instead.",
+            category=DeprecationWarning,
+            stacklevel=3,
+        )
+    rwg = as_rw_graph(G)
+    require_undirected(rwg)
+    if rwg.number_of_nodes() < 2:
+        raise nx.NetworkXError("metric_closure needs at least two nodes")
+    # Check connectivity before the kernel: rustworkx's metric_closure panics
+    # (rather than erroring) on a disconnected graph with an isolated node.
+    if not rx.is_connected(rwg.rx_graph):
+        raise nx.NetworkXError("G is not a connected graph. metric_closure is not defined.")
+    closure = rx.metric_closure(rwg.rx_graph, edge_weight_fn(weight))
+    index_to_node = rwg.index_to_node
+    out = nx.Graph()
+    out.add_nodes_from(rwg.node_to_index)
+    for u, v, (distance, path) in closure.weighted_edge_list():
+        out.add_edge(
+            index_to_node[u],
+            index_to_node[v],
+            distance=distance,
+            path=[index_to_node[i] for i in path],
+        )
+    return out
+
+
+metric_closure.can_run = _can_run_metric_closure

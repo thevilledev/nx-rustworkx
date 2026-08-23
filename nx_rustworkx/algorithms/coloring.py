@@ -9,8 +9,14 @@ from nx_rustworkx.algorithms._utils import as_rw_graph, can_run_undirected, requ
 __all__ = ["greedy_color"]
 
 # rustworkx's Degree strategy colors nodes in decreasing degree order, which is
-# what NetworkX calls largest_first.
-_STRATEGIES = {"largest_first": rx.ColoringStrategy.Degree}
+# what NetworkX calls largest_first; Saturation is DSATUR and IndependentSet is
+# the greedy independent-set strategy.
+_STRATEGIES = {
+    "largest_first": rx.ColoringStrategy.Degree,
+    "saturation_largest_first": rx.ColoringStrategy.Saturation,
+    "DSATUR": rx.ColoringStrategy.Saturation,
+    "independent_set": rx.ColoringStrategy.IndependentSet,
+}
 
 
 def _can_run_greedy_color(G, strategy="largest_first", interchange=False, **kwargs):
@@ -25,7 +31,7 @@ def _can_run_greedy_color(G, strategy="largest_first", interchange=False, **kwar
 
 
 def greedy_color(G, strategy="largest_first", interchange=False):
-    """Color the graph greedily in decreasing degree order."""
+    """Color the graph greedily with the requested rustworkx strategy."""
     _ = interchange
     rwg = as_rw_graph(G)
     require_undirected(rwg)

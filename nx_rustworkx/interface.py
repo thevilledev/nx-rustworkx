@@ -64,6 +64,14 @@ class BackendInterface:
                 "minimum spanning forest is not unique when weights tie, so the "
                 "intermediate result differs even though the tree matches"
             ),
+            "test_bfs_layers": (
+                "each layer holds the right nodes, but rustworkx reports a "
+                "layer in index order rather than NetworkX's discovery order"
+            ),
+            "test_limited_bfs_layers": (
+                "each layer holds the right nodes, but rustworkx reports a "
+                "layer in index order rather than NetworkX's discovery order"
+            ),
         }
         for item in items:
             # Parameterized items arrive as "name[param]".

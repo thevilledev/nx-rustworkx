@@ -335,3 +335,27 @@ def test_cutoff_falls_back_to_networkx():
         BackendInterface.can_run("single_source_shortest_path_length", (G, 0), {"cutoff": 2})
         is not True
     )
+
+
+@pytest.mark.parametrize("G", GRAPHS)
+def test_single_source_all_shortest_paths_matches(G):
+    got = {
+        t: sorted(ps) for t, ps in nx.single_source_all_shortest_paths(G, 0, backend="rustworkx")
+    }
+    expected = {t: sorted(ps) for t, ps in nx.single_source_all_shortest_paths.orig_func(G, 0)}
+    assert got == expected
+
+
+def test_single_source_all_shortest_paths_weighted_ties():
+    G = nx.Graph([(0, 1), (0, 2), (1, 3), (2, 3)])
+    for u, v in G.edges():
+        G[u][v]["weight"] = 1
+    got = {
+        t: sorted(ps)
+        for t, ps in nx.single_source_all_shortest_paths(G, 0, weight="weight", backend="rustworkx")
+    }
+    expected = {
+        t: sorted(ps)
+        for t, ps in nx.single_source_all_shortest_paths.orig_func(G, 0, weight="weight")
+    }
+    assert got == expected

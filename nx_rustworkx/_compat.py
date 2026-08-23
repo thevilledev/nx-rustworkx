@@ -14,7 +14,9 @@ from functools import lru_cache
 import networkx as nx
 
 __all__ = [
+    "dominance_frontiers_includes_start",
     "immediate_dominators_includes_start",
+    "metric_closure_is_deprecated",
     "single_target_shortest_path_length_returns_dict",
 ]
 
@@ -28,6 +30,25 @@ def _orig(name):
 def immediate_dominators_includes_start() -> bool:
     """NetworkX 3.5 dropped the start node's self-domination from the result."""
     return 0 in _orig("immediate_dominators")(nx.DiGraph([(0, 1)]), 0)
+
+
+@lru_cache(maxsize=None)
+def dominance_frontiers_includes_start() -> bool:
+    """NetworkX 3.5 started reporting the start node inside dominance frontiers."""
+    result = _orig("dominance_frontiers")(nx.DiGraph([(0, 1), (1, 0)]), 0)
+    return 0 in result[1]
+
+
+@lru_cache(maxsize=None)
+def metric_closure_is_deprecated() -> bool:
+    """NetworkX 3.6 deprecated metric_closure for removal in 3.8."""
+    from networkx.algorithms.approximation import steinertree
+
+    func = getattr(steinertree.metric_closure, "orig_func", steinertree.metric_closure)
+    with warnings.catch_warnings(record=True) as caught:
+        warnings.simplefilter("always")
+        func(nx.path_graph(2))
+    return any(issubclass(w.category, DeprecationWarning) for w in caught)
 
 
 @lru_cache(maxsize=None)

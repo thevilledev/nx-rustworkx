@@ -154,3 +154,107 @@ def test_vf2pp_is_isomorphic_matches():
     H = nx.relabel_nodes(G, {n: n + 100 for n in G})
     assert nx.vf2pp_is_isomorphic(G, H, backend="rustworkx") is True
     assert nx.vf2pp_is_isomorphic(G, nx.path_graph(30), backend="rustworkx") is False
+
+
+def test_greedy_color_extra_strategies_are_valid():
+    for strategy in ("saturation_largest_first", "DSATUR", "independent_set"):
+        for G in (nx.petersen_graph(), nx.gnp_random_graph(40, 0.15, seed=4)):
+            colors = nx.greedy_color(G, strategy=strategy, backend="rustworkx")
+            assert set(colors) == set(G)
+            for u, v in G.edges():
+                assert colors[u] != colors[v], (strategy, u, v)
+
+
+def test_line_graph_matches():
+    G = nx.Graph()
+    G.add_edge(2, 1)
+    G.add_edge(1, 0)
+    G.add_edge(1, 1)  # self-loops become ordinary line-graph nodes
+    got = nx.line_graph(G, backend="rustworkx")
+    expected = nx.line_graph.orig_func(G)
+    assert set(got.nodes) == set(expected.nodes)
+    assert {frozenset(e) for e in got.edges} == {frozenset(e) for e in expected.edges}
+
+
+def test_line_graph_directed_falls_back():
+    from nx_rustworkx.interface import BackendInterface
+
+    D = nx.DiGraph([(0, 1), (1, 2)])
+    assert BackendInterface.can_run("line_graph", (D,), {}) is not True
+
+
+def test_is_matching_variants():
+    G = nx.Graph([(1, 2), (1, 3), (2, 3), (2, 4), (3, 5), (4, 5)])
+    cases = [{(1, 3), (2, 4)}, {(1, 2), (3, 5)}, {(1, 2), (2, 3)}, {1: 3, 3: 1, 2: 4, 4: 2}]
+    for matching in cases:
+        assert nx.is_matching(G, matching, backend="rustworkx") == nx.is_matching.orig_func(
+            G, matching
+        )
+        assert nx.is_maximal_matching(
+            G, matching, backend="rustworkx"
+        ) == nx.is_maximal_matching.orig_func(G, matching)
+    with pytest.raises(nx.NetworkXError):
+        nx.is_matching(G, {(1, 99)}, backend="rustworkx")
+    with pytest.raises(nx.NetworkXError):
+        nx.is_matching(G, {7: 7}, backend="rustworkx")
+    # A self-loop edge in set form is invalid, not an error.
+    H = nx.Graph([(0, 0), (0, 1)])
+    assert nx.is_matching(H, {(0, 0)}, backend="rustworkx") is False
+
+
+def test_metric_closure_matches_distances():
+    G = _weighted(seed=6, n=18, p=0.3)
+    if not nx.is_connected.orig_func(G):
+        G = nx.compose(G, nx.path_graph(sorted(G)))
+    got = nx.approximation.metric_closure(G, backend="rustworkx")
+    expected = nx.approximation.metric_closure.orig_func(G)
+    assert set(got.nodes) == set(expected.nodes)
+    for u, v in expected.edges:
+        assert got[u][v]["distance"] == pytest.approx(expected[u][v]["distance"])
+        path = got[u][v]["path"]
+        assert path[0] == u and path[-1] == v
+        assert _total_weight(G, zip(path, path[1:])) == pytest.approx(expected[u][v]["distance"])
+
+
+def test_metric_closure_disconnected_raises():
+    with pytest.raises(nx.NetworkXError):
+        nx.approximation.metric_closure(nx.Graph([(0, 1), (2, 3)]), backend="rustworkx")
+
+
+def test_all_simple_paths_multiple_targets():
+    G = nx.gnp_random_graph(12, 0.25, seed=2)
+    for targets in ([3, 7], [0, 5], [5, 99], (7, 3, 3)):
+        got = sorted(nx.all_simple_paths(G, 0, targets, backend="rustworkx"))
+        expected = sorted(nx.all_simple_paths.orig_func(G, 0, targets))
+        assert got == expected, targets
+
+
+def test_vf2pp_isomorphism_returns_valid_mapping():
+    G = nx.gnp_random_graph(25, 0.2, seed=9)
+    H = nx.relabel_nodes(G, {n: n + 100 for n in G})
+    mapping = nx.vf2pp_isomorphism(G, H, backend="rustworkx")
+    assert set(mapping) == set(G) and set(mapping.values()) == set(H)
+    for u, v in G.edges():
+        assert H.has_edge(mapping[u], mapping[v])
+    assert nx.vf2pp_isomorphism(G, nx.path_graph(25), backend="rustworkx") is None
+    assert nx.vf2pp_isomorphism(nx.path_graph(3), nx.DiGraph([(0, 1)]), backend="rustworkx") is None
+
+
+def test_vf2pp_all_isomorphisms_counts():
+    got = list(nx.vf2pp_all_isomorphisms(nx.cycle_graph(4), nx.cycle_graph(4), backend="rustworkx"))
+    expected = list(nx.vf2pp_all_isomorphisms.orig_func(nx.cycle_graph(4), nx.cycle_graph(4)))
+    key = lambda m: tuple(sorted(m.items()))  # noqa: E731
+    assert sorted(map(key, got)) == sorted(map(key, expected))
+
+
+def test_vf2pp_isomorphism_empty_graphs():
+    for cls in (nx.Graph, nx.DiGraph):
+        assert nx.vf2pp_isomorphism(cls(), cls(), backend="rustworkx") is None
+        assert list(nx.vf2pp_all_isomorphisms(cls(), cls(), backend="rustworkx")) == []
+
+
+def test_metric_closure_isolated_node_raises():
+    G = nx.complete_graph(4)
+    G.add_node(100)
+    with pytest.raises(nx.NetworkXError):
+        nx.approximation.metric_closure(G, backend="rustworkx")

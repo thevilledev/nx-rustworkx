@@ -5,9 +5,9 @@ from __future__ import annotations
 import networkx as nx
 import rustworkx as rx
 
-from nx_rustworkx.algorithms._utils import as_rw_graph, reject_multigraph
+from nx_rustworkx.algorithms._utils import as_rw_graph, reject_multigraph, remap_nodes
 
-__all__ = ["dfs_edges"]
+__all__ = ["bfs_layers", "dfs_edges"]
 
 
 def _can_run_dfs_edges(G, source=None, depth_limit=None, sort_neighbors=None, **kwargs):
@@ -40,3 +40,24 @@ def dfs_edges(G, source=None, depth_limit=None, *, sort_neighbors=None):
 
 
 dfs_edges.can_run = _can_run_dfs_edges
+
+
+def bfs_layers(G, sources):
+    """Yield each BFS layer. The order inside one layer is unspecified."""
+    rwg = as_rw_graph(G)
+    if rwg.has_node(sources):
+        sources = [sources]
+    indices = []
+    for source in sources:
+        if source not in rwg.node_to_index:
+            raise nx.NetworkXError(f"The node {source} is not in the graph.")
+        indices.append(rwg.node_to_index[source])
+
+    def _iter():
+        for layer in rx.bfs_layers(rwg.rx_graph, indices):
+            yield remap_nodes(rwg, layer)
+
+    return _iter()
+
+
+bfs_layers.can_run = lambda G, *a, **k: reject_multigraph(G) or True

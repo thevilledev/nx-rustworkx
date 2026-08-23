@@ -224,11 +224,11 @@ def require_directed(rwg) -> None:
 #: NetworkX at both n=400 and n=2000, and the reason is structural rather than a
 #: constant factor: NetworkX stops early (``has_path``,
 #: ``bidirectional_shortest_path``, ``descendants_at_distance``,
-#: ``is_bipartite``), the result is quadratic in the graph so building it in
-#: Python dominates (``complement``, ``all_pairs_shortest_path``, the
-#: ``single_source_``/``single_target_`` path variants), or the kernel is so
-#: cheap that only the remap is left (the degree centralities,
-#: ``group_degree_centrality``).
+#: ``is_bipartite``, ``find_cycle``, ``is_maximal_matching``), the result is
+#: quadratic in the graph so building it in Python dominates (``complement``,
+#: ``all_pairs_shortest_path``, the ``single_source_``/``single_target_`` path
+#: variants), or the kernel is so cheap that only the remap is left (the degree
+#: centralities, ``group_degree_centrality``).
 #:
 #: ``backend="rustworkx"`` still runs them, so nothing becomes unreachable. Only
 #: ``nx.config.backend_priority`` skips them.
@@ -240,8 +240,10 @@ NO_AUTO_DISPATCH = frozenset(
         "cycle_basis",
         "degree_centrality",
         "descendants_at_distance",
+        "find_cycle",
         "find_negative_cycle",
         "group_degree_centrality",
+        "is_maximal_matching",
         "has_path",
         "in_degree_centrality",
         "is_bipartite",
