@@ -217,6 +217,32 @@ def test_views_match_networkx(pair, case):
     assert read(backend_graph) == read(nx_graph)
 
 
+def test_edges_nbunch_orientation_and_order_match_networkx():
+    edges = [(1, 2), (2, 3), (3, 4), (1, 4)]
+    G = rustworkx_graph(edges)
+    H = nx.Graph(edges)
+    assert list(G.edges(2)) == list(H.edges(2))
+    assert list(G.edges([3, 1])) == list(H.edges([3, 1]))
+    assert list(G.edges([3, 99])) == list(H.edges([3, 99]))  # missing quietly ignored
+    assert list(G.edges(2, data=True)) == list(H.edges(2, data=True))
+    assert list(G.edges(2, data="w", default=0)) == list(H.edges(2, data="w", default=0))
+    D = rustworkx_graph(edges, directed=True)
+    DH = nx.DiGraph(edges)
+    assert list(D.edges(2)) == list(DH.edges(2))
+    assert list(D.edges([4, 1])) == list(DH.edges([4, 1]))
+
+
+def test_multigraph_edges_nbunch_matches_networkx():
+    from nx_rustworkx.convert import convert_from_nx
+
+    edges = [(1, 2), (1, 2), (2, 3), (3, 3)]
+    M = nx.MultiGraph(edges)
+    W = convert_from_nx(M, preserve_edge_attrs=True)
+    assert list(W.edges(2, keys=True)) == list(M.edges(2, keys=True))
+    assert list(W.edges(2, keys=True, data=True)) == list(M.edges(2, keys=True, data=True))
+    assert list(W.edges([3, 1])) == list(M.edges([3, 1]))
+
+
 def test_node_attributes_survive_add_and_update():
     G = nx.empty_graph(0, backend="rustworkx")
     G.add_node("a", color="red")
