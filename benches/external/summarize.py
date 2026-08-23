@@ -173,6 +173,11 @@ def t2_section(t2_dir: Path | None, warnings: list[str]) -> list[str]:
                         f"T2 {short_name(name)} [{label}]: expected dispatch but "
                         f"~no delta ({ratio:.2f}x) — verify"
                     )
+                if disp == "yes" and ratio < 0.8:
+                    warnings.append(
+                        f"T2 {short_name(name)} [{label}]: backend dispatched and "
+                        f"LOST ({ratio:.2f}x) — should_run tuning candidate"
+                    )
                 if disp.startswith("no") and (ratio > 1.3 or ratio < 0.7):
                     warnings.append(
                         f"T2 {short_name(name)} [{label}]: expected tie (declined) "
