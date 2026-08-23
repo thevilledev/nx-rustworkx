@@ -217,6 +217,46 @@ def test_views_match_networkx(pair, case):
     assert read(backend_graph) == read(nx_graph)
 
 
+@pytest.mark.parametrize("directed", [False, True])
+def test_add_edge_merges_attributes_like_networkx(directed):
+    G = rustworkx_graph(directed=directed)
+    H = (nx.DiGraph if directed else nx.Graph)()
+    for graph in (G, H):
+        graph.add_edge(1, 2, weight=3)
+        graph.add_edge(1, 2, color="red")
+    assert G.get_edge_data(1, 2) == H.get_edge_data(1, 2) == {"weight": 3, "color": "red"}
+    for graph in (G, H):
+        graph.add_edge(1, 2)  # a bare re-add keeps the attributes
+    assert G.get_edge_data(1, 2) == H.get_edge_data(1, 2) == {"weight": 3, "color": "red"}
+    for graph in (G, H):
+        graph.add_edge(1, 2, weight=9)
+    assert G.get_edge_data(1, 2) == H.get_edge_data(1, 2) == {"weight": 9, "color": "red"}
+    assert G.number_of_edges() == H.number_of_edges() == 1
+
+
+def test_add_edges_from_merges_duplicates_like_networkx():
+    edges = [(1, 2, {"a": 1}), (1, 2, {"b": 2}), (1, 2)]
+    G = rustworkx_graph()
+    G.add_edges_from(edges)
+    H = nx.Graph()
+    H.add_edges_from(edges)
+    assert G.get_edge_data(1, 2) == H[1][2] == {"a": 1, "b": 2}
+    assert G.number_of_edges() == 1
+
+
+def test_add_edge_updates_kernel_built_containers_in_place():
+    # An unseeded random generator hands back a multigraph=True rustworkx
+    # container inside the simple wrapper; add_edge must merge there too,
+    # never grow a parallel edge.
+    G = nx.gnp_random_graph(30, 0.2, backend="rustworkx")
+    assert G.rx_graph.multigraph
+    G.add_edge(0, 1, weight=1)
+    edges = G.rx_graph.num_edges()
+    G.add_edge(0, 1, color="red")
+    assert G.rx_graph.num_edges() == edges
+    assert G.get_edge_data(0, 1) == {"weight": 1, "color": "red"}
+
+
 def test_node_attributes_survive_add_and_update():
     G = nx.empty_graph(0, backend="rustworkx")
     G.add_node("a", color="red")
