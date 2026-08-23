@@ -59,7 +59,7 @@
             <tr><th scope="row">Operators</th><td><code>complement</code>, <code>cartesian_product</code>, <code>tensor_product</code>, <code>line_graph</code></td></tr>
             <tr><th scope="row">Simple paths</th><td><code>all_simple_paths</code></td></tr>
             <tr><th scope="row">Isomorphism</th><td><code>is_isomorphic</code>, <code>vf2pp_is_isomorphic</code>, <code>vf2pp_isomorphism</code>, <code>vf2pp_all_isomorphisms</code></td></tr>
-            <tr><th scope="row">Construction</th><td><code>Graph</code>, <code>DiGraph</code>, <code>empty_graph</code>, <code>from_edgelist</code></td></tr>
+            <tr><th scope="row">Construction</th><td><code>Graph</code>, <code>DiGraph</code>, <code>MultiGraph</code>, <code>MultiDiGraph</code>, <code>empty_graph</code>, <code>from_edgelist</code></td></tr>
             <tr><th scope="row">Generators</th><td><code>path_graph</code>, <code>cycle_graph</code>, <code>star_graph</code>, <code>complete_graph</code>, <code>barbell_graph</code>, <code>lollipop_graph</code>, <code>binomial_tree</code>, <code>full_rary_tree</code>, <code>karate_club_graph</code>, <code>grid_2d_graph</code>, <code>hexagonal_lattice_graph</code></td></tr>
             <tr><th scope="row">Random generators</th><td><code>gnp_random_graph</code>, <code>fast_gnp_random_graph</code>, <code>gnm_random_graph</code>, <code>dense_gnm_random_graph</code>, <code>random_regular_graph</code>, <code>stochastic_block_model</code>, <code>random_geometric_graph</code>, <code>barabasi_albert_graph</code>, <code>bipartite.random_graph</code></td></tr>
           </tbody>
@@ -114,7 +114,7 @@
       <p>The backend rejects argument shapes it cannot honor:</p>
 
       <ul>
-        <li>No <code>MultiGraph</code> or <code>MultiDiGraph</code>.</li>
+        <li><code>MultiGraph</code> and <code>MultiDiGraph</code> inputs follow NetworkX's parallel-edge semantics: shortest paths take the lightest parallel edge, PageRank and HITS sum parallel weights, betweenness, bridges and articulation points collapse bundles, and spanning trees, <code>find_cycle</code> and <code>line_graph</code> report edge keys. The functions NetworkX itself refuses on multigraphs (<code>core_number</code>, <code>cycle_basis</code>, <code>chain_decomposition</code>, <code>stoer_wagner</code>, <code>max_weight_matching</code>, <code>is_maximal_matching</code>, <code>eigenvector_centrality</code>, <code>katz_centrality</code>, <code>katz_centrality_numpy</code>, <code>transitivity</code>) fall through, as do <code>complement</code>, <code>cartesian_product</code>, <code>tensor_product</code> and <code>vf2pp_all_isomorphisms</code>, whose multigraph results NetworkX keys by edge identity the rustworkx kernels drop.</li>
         <li>No callable weight functions.</li>
         <li>No <code>cutoff</code> on shortest-path functions.</li>
         <li>Betweenness is unweighted and has no <code>k=</code> sampling; closeness accepts a string <code>distance</code>, callables fall through.</li>
@@ -122,6 +122,7 @@
         <li><code>greedy_color</code> implements <code>largest_first</code>, <code>saturation_largest_first</code>/<code>DSATUR</code>, and <code>independent_set</code>; other strategies fall through.</li>
         <li><code>max_weight_matching</code> requires integer edge weights.</li>
         <li>A* requires a consistent heuristic. Disable the check with <code>nx.config.backends.rustworkx.astar_heuristic_check = False</code> only when you already know it is consistent.</li>
+        <li>The native generators (<code>path_graph</code>, <code>cycle_graph</code>, …) fall through for a multigraph <code>create_using</code>; <code>empty_graph</code> and <code>from_edgelist</code> build a rustworkx-backed multigraph for one.</li>
         <li>Random generators take no <code>create_using</code>; <code>random_geometric_graph</code> samples its own positions (explicit <code>pos</code> falls through); <code>barabasi_albert_graph</code> takes no <code>initial_graph</code>; <code>grid_2d_graph</code> handles undirected, non-periodic grids; <code>bipartite.random_graph</code> is undirected with <code>p &lt; 1</code>.</li>
       </ul>
 

@@ -90,6 +90,7 @@ def is_matching(G, matching):
 
 
 is_matching.can_run = can_run_undirected
+is_matching.multigraph = True
 
 
 def is_maximal_matching(G, matching):

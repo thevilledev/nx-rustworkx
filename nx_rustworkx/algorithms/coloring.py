@@ -41,3 +41,4 @@ def greedy_color(G, strategy="largest_first", interchange=False):
 
 
 greedy_color.can_run = _can_run_greedy_color
+greedy_color.multigraph = True

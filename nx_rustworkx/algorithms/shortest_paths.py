@@ -16,12 +16,12 @@ from nx_rustworkx.algorithms._utils import (
     default_should_run,
     edge_weight_fn,
     reject_callable_weight,
-    reject_multigraph,
     remap_length_dict,
     remap_path,
     remap_path_dict,
     require_node,
     reversed_digraph,
+    simple_view,
 )
 
 __all__ = [
@@ -70,9 +70,6 @@ def _inf():
 
 def _can_run_shortest(G, source=None, target=None, weight=None, method="dijkstra", **kwargs):
     _ = source, target, method, kwargs
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     return reject_callable_weight(weight) or True
 
 
@@ -156,6 +153,15 @@ def _path_weight(rwg, path, weight):
     node_to_index = rwg.node_to_index
     rx_graph = rwg.rx_graph
     total = 0.0
+    if rwg.is_multigraph():
+        # NetworkX's weight function takes the cheapest of the parallel edges;
+        # get_edge_data would hand back an arbitrary one.
+        for u, v in zip(path, path[1:]):
+            total += min(
+                weight_fn(data)
+                for data in rx_graph.get_all_edge_data(node_to_index[u], node_to_index[v])
+            )
+        return total
     for u, v in zip(path, path[1:]):
         total += weight_fn(rx_graph.get_edge_data(node_to_index[u], node_to_index[v]))
     return total
@@ -273,6 +279,7 @@ def _should_run_shortest_path(
 
 shortest_path.can_run = _can_run_shortest
 shortest_path.should_run = _should_run_shortest_path
+shortest_path.multigraph = True
 
 
 def shortest_path_length(G, source=None, target=None, weight=None, method="dijkstra"):
@@ -315,6 +322,7 @@ def shortest_path_length(G, source=None, target=None, weight=None, method="dijks
 
 shortest_path_length.can_run = _can_run_shortest
 shortest_path_length.should_run = _should_run_single_pair_length
+shortest_path_length.multigraph = True
 
 
 def single_source_dijkstra(G, source, target=None, cutoff=None, weight="weight"):
@@ -359,6 +367,7 @@ def single_source_dijkstra(G, source, target=None, cutoff=None, weight="weight")
 
 
 single_source_dijkstra.can_run = _can_run_single_source
+single_source_dijkstra.multigraph = True
 
 
 def dijkstra_path(G, source, target, weight="weight"):
@@ -368,6 +377,7 @@ def dijkstra_path(G, source, target, weight="weight"):
 
 
 dijkstra_path.can_run = _can_run_st_path
+dijkstra_path.multigraph = True
 
 
 def bellman_ford_path(G, source, target, weight="weight"):
@@ -382,6 +392,7 @@ def bellman_ford_path(G, source, target, weight="weight"):
 
 
 bellman_ford_path.can_run = _can_run_st_path
+bellman_ford_path.multigraph = True
 
 
 def _reject_cutoff(cutoff, name):
@@ -391,9 +402,7 @@ def _reject_cutoff(cutoff, name):
 
 
 def _can_run_unweighted(G, *args, cutoff=None, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
+    _ = G, args, kwargs
     return _reject_cutoff(cutoff, "shortest path") or True
 
 
@@ -451,6 +460,7 @@ def single_source_dijkstra_path(G, source, cutoff=None, weight="weight"):
 
 
 single_source_dijkstra_path.can_run = _can_run_weighted
+single_source_dijkstra_path.multigraph = True
 
 
 def single_source_dijkstra_path_length(G, source, cutoff=None, weight="weight"):
@@ -460,6 +470,7 @@ def single_source_dijkstra_path_length(G, source, cutoff=None, weight="weight"):
 
 
 single_source_dijkstra_path_length.can_run = _can_run_weighted
+single_source_dijkstra_path_length.multigraph = True
 
 
 def single_source_bellman_ford_path(G, source, weight="weight"):
@@ -468,6 +479,7 @@ def single_source_bellman_ford_path(G, source, weight="weight"):
 
 
 single_source_bellman_ford_path.can_run = _can_run_weighted
+single_source_bellman_ford_path.multigraph = True
 
 
 def single_source_bellman_ford_path_length(G, source, weight="weight"):
@@ -476,6 +488,7 @@ def single_source_bellman_ford_path_length(G, source, weight="weight"):
 
 
 single_source_bellman_ford_path_length.can_run = _can_run_weighted
+single_source_bellman_ford_path_length.multigraph = True
 
 
 def single_source_bellman_ford(G, source, target=None, weight="weight"):
@@ -499,6 +512,7 @@ def single_source_bellman_ford(G, source, target=None, weight="weight"):
 
 
 single_source_bellman_ford.can_run = _can_run_weighted
+single_source_bellman_ford.multigraph = True
 
 
 # --- single source, unweighted -------------------------------------------
@@ -511,6 +525,7 @@ def single_source_shortest_path(G, source, cutoff=None):
 
 
 single_source_shortest_path.can_run = _can_run_unweighted
+single_source_shortest_path.multigraph = True
 
 
 def single_source_shortest_path_length(G, source, cutoff=None):
@@ -520,6 +535,7 @@ def single_source_shortest_path_length(G, source, cutoff=None):
 
 
 single_source_shortest_path_length.can_run = _can_run_unweighted
+single_source_shortest_path_length.multigraph = True
 
 
 def single_target_shortest_path(G, target, cutoff=None):
@@ -529,6 +545,7 @@ def single_target_shortest_path(G, target, cutoff=None):
 
 
 single_target_shortest_path.can_run = _can_run_unweighted
+single_target_shortest_path.multigraph = True
 
 
 def single_target_shortest_path_length(G, target, cutoff=None):
@@ -546,6 +563,7 @@ def single_target_shortest_path_length(G, target, cutoff=None):
 
 
 single_target_shortest_path_length.can_run = _can_run_unweighted
+single_target_shortest_path_length.multigraph = True
 
 
 def bidirectional_shortest_path(G, source, target):
@@ -554,6 +572,7 @@ def bidirectional_shortest_path(G, source, target):
 
 
 bidirectional_shortest_path.can_run = _can_run_unweighted
+bidirectional_shortest_path.multigraph = True
 
 
 # --- all pairs ------------------------------------------------------------
@@ -581,6 +600,7 @@ def all_pairs_dijkstra(G, cutoff=None, weight="weight"):
 
 
 all_pairs_dijkstra.can_run = _can_run_weighted
+all_pairs_dijkstra.multigraph = True
 
 
 def all_pairs_dijkstra_path(G, cutoff=None, weight="weight"):
@@ -590,6 +610,7 @@ def all_pairs_dijkstra_path(G, cutoff=None, weight="weight"):
 
 
 all_pairs_dijkstra_path.can_run = _can_run_weighted
+all_pairs_dijkstra_path.multigraph = True
 
 
 def all_pairs_dijkstra_path_length(G, cutoff=None, weight="weight"):
@@ -599,6 +620,7 @@ def all_pairs_dijkstra_path_length(G, cutoff=None, weight="weight"):
 
 
 all_pairs_dijkstra_path_length.can_run = _can_run_weighted
+all_pairs_dijkstra_path_length.multigraph = True
 
 
 def all_pairs_bellman_ford_path(G, weight="weight"):
@@ -607,6 +629,7 @@ def all_pairs_bellman_ford_path(G, weight="weight"):
 
 
 all_pairs_bellman_ford_path.can_run = _can_run_weighted
+all_pairs_bellman_ford_path.multigraph = True
 
 
 def all_pairs_bellman_ford_path_length(G, weight="weight"):
@@ -615,6 +638,7 @@ def all_pairs_bellman_ford_path_length(G, weight="weight"):
 
 
 all_pairs_bellman_ford_path_length.can_run = _can_run_weighted
+all_pairs_bellman_ford_path_length.multigraph = True
 
 
 def all_pairs_shortest_path(G, cutoff=None):
@@ -624,6 +648,7 @@ def all_pairs_shortest_path(G, cutoff=None):
 
 
 all_pairs_shortest_path.can_run = _can_run_unweighted
+all_pairs_shortest_path.multigraph = True
 
 
 def all_pairs_shortest_path_length(G, cutoff=None):
@@ -633,6 +658,7 @@ def all_pairs_shortest_path_length(G, cutoff=None):
 
 
 all_pairs_shortest_path_length.can_run = _can_run_unweighted
+all_pairs_shortest_path_length.multigraph = True
 
 
 # --- point to point -------------------------------------------------------
@@ -644,6 +670,7 @@ def dijkstra_path_length(G, source, target, weight="weight"):
 
 
 dijkstra_path_length.can_run = _can_run_st_path
+dijkstra_path_length.multigraph = True
 
 
 def bellman_ford_path_length(G, source, target, weight="weight"):
@@ -654,6 +681,7 @@ def bellman_ford_path_length(G, source, target, weight="weight"):
 
 
 bellman_ford_path_length.can_run = _can_run_st_path
+bellman_ford_path_length.multigraph = True
 
 
 def _can_run_all_shortest_paths(G, source, target, weight=None, method="dijkstra", **kwargs):
@@ -674,18 +702,28 @@ def all_shortest_paths(G, source, target, weight=None, method="dijkstra"):
     tgt = require_node(rwg, target, kind="Target")
     if src == tgt:
         return iter([[source]])
-    paths = rx.all_shortest_paths(
-        rwg.rx_graph,
-        src,
-        tgt,
-        weight_fn=edge_weight_fn(weight),
-    )
+    graph, weight_fn = _shortest_path_container(rwg, weight)
+    paths = rx.all_shortest_paths(graph, src, tgt, weight_fn=weight_fn)
     if not paths:
         raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
     return iter([remap_path(rwg, path) for path in paths])
 
 
+def _shortest_path_container(rwg, weight):
+    """Graph and weight callback for kernels that enumerate shortest paths.
+
+    rustworkx would emit the same node path once per equal-weight parallel
+    edge; NetworkX, working from predecessors, emits it once. The collapsed
+    view keeps the lightest edge of every bundle, so the enumeration matches.
+    """
+    if rwg.is_multigraph():
+        view = simple_view(rwg, weight)
+        return view.graph, view.weight_fn
+    return rwg.rx_graph, edge_weight_fn(weight)
+
+
 all_shortest_paths.can_run = _can_run_all_shortest_paths
+all_shortest_paths.multigraph = True
 
 
 def _can_run_ssasp(G, source, weight=None, method="dijkstra", **kwargs):
@@ -703,11 +741,8 @@ def single_source_all_shortest_paths(G, source, weight=None, method="dijkstra"):
     _ = method
     rwg = as_rw_graph(G)
     src = require_node(rwg, source, kind="Source")
-    raw = rx.single_source_all_shortest_paths(
-        rwg.rx_graph,
-        src,
-        weight_fn=edge_weight_fn(weight),
-    )
+    graph, weight_fn = _shortest_path_container(rwg, weight)
+    raw = rx.single_source_all_shortest_paths(graph, src, weight_fn=weight_fn)
     index_to_node = rwg.index_to_node
 
     def _iter():
@@ -718,6 +753,7 @@ def single_source_all_shortest_paths(G, source, weight=None, method="dijkstra"):
 
 
 single_source_all_shortest_paths.can_run = _can_run_ssasp
+single_source_all_shortest_paths.multigraph = True
 
 
 def _heuristic_is_consistent(G, target, heuristic, weight) -> bool:
@@ -805,6 +841,7 @@ def astar_path(G, source, target, heuristic=None, weight="weight", *, cutoff=Non
 
 
 astar_path.can_run = _can_run_astar
+astar_path.multigraph = True
 
 
 def astar_path_length(G, source, target, heuristic=None, weight="weight", *, cutoff=None):
@@ -827,6 +864,7 @@ def astar_path_length(G, source, target, heuristic=None, weight="weight", *, cut
 
 
 astar_path_length.can_run = _can_run_astar
+astar_path_length.multigraph = True
 
 
 def has_path(G, source, target):
@@ -840,6 +878,7 @@ def has_path(G, source, target):
 
 
 has_path.can_run = _can_run_unweighted
+has_path.multigraph = True
 
 
 # --- dense all pairs ------------------------------------------------------
@@ -881,6 +920,7 @@ def floyd_warshall_predecessor_and_distance(G, weight="weight"):
 
 
 floyd_warshall_predecessor_and_distance.can_run = _can_run_weighted
+floyd_warshall_predecessor_and_distance.multigraph = True
 
 
 def floyd_warshall(G, weight="weight"):
@@ -889,6 +929,7 @@ def floyd_warshall(G, weight="weight"):
 
 
 floyd_warshall.can_run = _can_run_weighted
+floyd_warshall.multigraph = True
 
 
 def _can_run_floyd_numpy(G, nodelist=None, weight="weight", **kwargs):
@@ -912,6 +953,7 @@ def floyd_warshall_numpy(G, nodelist=None, weight="weight"):
 
 
 floyd_warshall_numpy.can_run = _can_run_floyd_numpy
+floyd_warshall_numpy.multigraph = True
 
 
 # --- negative cycles ------------------------------------------------------
@@ -929,6 +971,7 @@ def negative_edge_cycle(G, weight="weight", heuristic=True):
 
 
 negative_edge_cycle.can_run = _can_run_weighted
+negative_edge_cycle.multigraph = True
 
 
 def find_negative_cycle(G, source, weight="weight"):
@@ -950,12 +993,10 @@ def find_negative_cycle(G, source, weight="weight"):
 
 
 find_negative_cycle.can_run = _can_run_weighted
+find_negative_cycle.multigraph = True
 
 
 def _can_run_average_shortest_path_length(G, weight=None, method=None, **kwargs):
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if weight is not None:
         return "rustworkx average_shortest_path_length is unweighted only"
     if method not in (None, "unweighted"):
@@ -987,3 +1028,4 @@ def _require_connected_for_average(rwg):
 
 
 average_shortest_path_length.can_run = _can_run_average_shortest_path_length
+average_shortest_path_length.multigraph = True

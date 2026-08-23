@@ -128,8 +128,12 @@ scores = nx.betweenness_centrality(G)</code></pre>
       <p>
         <code>RustworkxGraph</code> supports common construction calls, node and
         edge attributes, and the <code>nodes</code>, <code>edges</code>,
-        <code>adj</code>, and <code>degree</code> views. It is not a complete
-        <code>nx.Graph</code> replacement: there is no drawing, I/O, or multigraph.
+        <code>adj</code>, and <code>degree</code> views;
+        <code>nx.MultiGraph(..., backend="rustworkx")</code> returns a
+        <code>RustworkxMultiGraph</code> with NetworkX's edge keys
+        (<code>add_edge(u, v, key=...)</code>, <code>edges(keys=True)</code>,
+        <code>G[u][v][key]</code>). Neither is a complete replacement for the
+        NetworkX classes: there is no drawing or I/O.
       </p>
 
       <h2 id="generators">Generators</h2>

@@ -11,11 +11,13 @@ import rustworkx as rx
 from rustworkx import generators as rxgen
 
 from nx_rustworkx import _compat
-from nx_rustworkx.graph import RustworkxGraph
+from nx_rustworkx.graph import RustworkxGraph, RustworkxMultiGraph
 
 __all__ = [
     "graph__new__",
     "digraph__new__",
+    "multigraph__new__",
+    "multidigraph__new__",
     "empty_graph",
     "from_edgelist",
     "path_graph",
@@ -74,10 +76,11 @@ def _validate_create_using(*specs) -> None:
             raise TypeError("create_using is not a valid NetworkX graph type or instance")
 
 
-def _new_graph(*, directed: bool, incoming_graph_data=None, attr=None):
+def _new_graph(*, directed: bool, multigraph: bool = False, incoming_graph_data=None, attr=None):
     attrs = dict(attr) if attr else {}
     attrs.pop("backend", None)
-    return RustworkxGraph.from_incoming(
+    wrapper = RustworkxMultiGraph if multigraph else RustworkxGraph
+    return wrapper.from_incoming(
         incoming_graph_data,
         directed=directed,
         graph_attrs=attrs,
@@ -88,7 +91,14 @@ def _can_run_new(cls, incoming_graph_data=None, **attr):
     _ = cls, attr
     if incoming_graph_data is not None and hasattr(incoming_graph_data, "is_multigraph"):
         if incoming_graph_data.is_multigraph():
-            return "nx-rustworkx does not support MultiGraph or MultiDiGraph"
+            return "nx-rustworkx does not collapse a MultiGraph into a Graph"
+    return True
+
+
+def _can_run_new_multi(cls, incoming_graph_data=None, multigraph_input=None, **attr):
+    _ = cls, incoming_graph_data, attr
+    if multigraph_input is not None:
+        return "nx-rustworkx does not read dict-of-dicts multigraph input"
     return True
 
 
@@ -125,26 +135,55 @@ digraph__new__.can_run = _can_run_new
 digraph__new__.should_run = _should_run_always
 
 
+def multigraph__new__(cls, incoming_graph_data=None, multigraph_input=None, **attr):
+    """``nx.MultiGraph(..., backend="rustworkx")`` constructor."""
+    _ = cls, multigraph_input
+    return _new_graph(
+        directed=False,
+        multigraph=True,
+        incoming_graph_data=incoming_graph_data,
+        attr=attr,
+    )
+
+
+multigraph__new__.can_run = _can_run_new_multi
+multigraph__new__.should_run = _should_run_always
+multigraph__new__.multigraph = True
+
+
+def multidigraph__new__(cls, incoming_graph_data=None, multigraph_input=None, **attr):
+    """``nx.MultiDiGraph(..., backend="rustworkx")`` constructor."""
+    _ = cls, multigraph_input
+    return _new_graph(
+        directed=True,
+        multigraph=True,
+        incoming_graph_data=incoming_graph_data,
+        attr=attr,
+    )
+
+
+multidigraph__new__.can_run = _can_run_new_multi
+multidigraph__new__.should_run = _should_run_always
+multidigraph__new__.multigraph = True
+
+
 def _can_run_empty(n=0, create_using=None, default=None, **kwargs):
-    _ = n, kwargs
-    return _reject_multi(create_using, default) or True
+    _ = n, create_using, default, kwargs
+    return True
 
 
 def empty_graph(n=0, create_using=None, default=None):
     """Empty rustworkx graph with ``n`` nodes (or an iterable of node IDs)."""
     _validate_create_using(create_using, default)
-    reason = _reject_multi(create_using, default)
-    if reason:
-        raise nx.NetworkXError(reason)
 
     if isinstance(create_using, RustworkxGraph):
         G = create_using
         G.clear()
     else:
-        directed = _is_directed_spec(create_using)
-        if create_using is None:
-            directed = _is_directed_spec(default)
-        G = RustworkxGraph.empty(directed=directed)
+        spec = default if create_using is None else create_using
+        directed = _is_directed_spec(spec)
+        wrapper = RustworkxMultiGraph if _is_multigraph_spec(spec) else RustworkxGraph
+        G = wrapper.empty(directed=directed)
 
     if isinstance(n, int):
         G.add_nodes_from(range(n))
@@ -155,11 +194,12 @@ def empty_graph(n=0, create_using=None, default=None):
 
 empty_graph.can_run = _can_run_empty
 empty_graph.should_run = _should_run_always
+empty_graph.multigraph = True
 
 
 def _can_run_edgelist(edgelist, create_using=None, **kwargs):
-    _ = edgelist, kwargs
-    return _reject_multi(create_using) or True
+    _ = edgelist, create_using, kwargs
+    return True
 
 
 def from_edgelist(edgelist, create_using=None):
@@ -171,6 +211,7 @@ def from_edgelist(edgelist, create_using=None):
 
 from_edgelist.can_run = _can_run_edgelist
 from_edgelist.should_run = _should_run_always
+from_edgelist.multigraph = True
 
 
 # --- rustworkx-kernel generators ------------------------------------------
@@ -937,6 +978,8 @@ random_graph.should_run = _should_run_always
 GENERATORS = [
     "graph__new__",
     "digraph__new__",
+    "multigraph__new__",
+    "multidigraph__new__",
     "empty_graph",
     "from_edgelist",
     "path_graph",

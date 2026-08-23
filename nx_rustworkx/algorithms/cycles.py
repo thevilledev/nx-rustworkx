@@ -40,6 +40,7 @@ def simple_cycles(G, length_bound=None):
 
 
 simple_cycles.can_run = _can_run_simple_cycles
+simple_cycles.multigraph = True
 
 
 def _can_run_cycle_basis(G, root=None, **kwargs):
@@ -91,10 +92,22 @@ def find_cycle(G, source=None, orientation=None):
     if not len(cycle):
         raise nx.NetworkXNoCycle("No cycle found.")
     index_to_node = rwg.index_to_node
+    if rwg.is_multigraph():
+        # NetworkX's edge_dfs reports the first key of G[u][v], the lowest index.
+        edge_keys = rwg.edge_keys
+        return [
+            (
+                index_to_node[u],
+                index_to_node[v],
+                edge_keys[min(rx_graph.edge_indices_from_endpoints(u, v))],
+            )
+            for u, v in cycle
+        ]
     return [(index_to_node[u], index_to_node[v]) for u, v in cycle]
 
 
 find_cycle.can_run = _can_run_find_cycle
+find_cycle.multigraph = True
 
 
 def _can_run_chain_decomposition(G, root=None, **kwargs):

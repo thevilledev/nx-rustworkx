@@ -12,6 +12,7 @@ from nx_rustworkx.algorithms._utils import (
     edge_weight_fn,
     require_nodes,
     require_undirected,
+    simple_view,
 )
 
 __all__ = ["metric_closure", "minimum_spanning_tree", "minimum_spanning_edges", "steiner_tree"]
@@ -20,20 +21,41 @@ _SUPPORTED_MST_ALGORITHMS = {"kruskal", "prim", "boruvka"}
 
 
 def _rebuild(rwg, edges, *, keep_graph_attrs=True):
-    """Build a NetworkX graph over every node of ``rwg`` with the given edges."""
-    out = nx.Graph()
+    """Build a NetworkX graph over every node of ``rwg`` with the given edges.
+
+    For a multigraph wrapper the edges come from its collapsed view, so each
+    payload is an original edge index that leads back to the NetworkX key.
+    """
+    multigraph = rwg.is_multigraph()
+    out = nx.MultiGraph() if multigraph else nx.Graph()
     node_attrs = rwg.node_attrs
     if node_attrs:
         out.add_nodes_from((node, node_attrs.get(node, {})) for node in rwg.index_to_node)
     else:
         out.add_nodes_from(rwg.index_to_node)
     index_to_node = rwg.index_to_node
-    for u, v, data in edges:
-        payload = data if isinstance(data, dict) else {}
-        out.add_edge(index_to_node[u], index_to_node[v], **payload)
+    if multigraph:
+        rx_graph = rwg.rx_graph
+        edge_keys = rwg.edge_keys
+        for u, v, index in edges:
+            payload = rx_graph.get_edge_data_by_index(index)
+            attrs = payload if isinstance(payload, dict) else {}
+            out.add_edges_from([(index_to_node[u], index_to_node[v], edge_keys[index], attrs)])
+    else:
+        for u, v, data in edges:
+            payload = data if isinstance(data, dict) else {}
+            out.add_edge(index_to_node[u], index_to_node[v], **payload)
     if keep_graph_attrs and rwg.graph:
         out.graph.update(rwg.graph)
     return out
+
+
+def _tree_container(rwg, weight):
+    """Graph and weight callback for the spanning-tree kernels."""
+    if rwg.is_multigraph():
+        view = simple_view(rwg, weight)
+        return view.graph, view.weight_fn
+    return rwg.rx_graph, edge_weight_fn(weight)
 
 
 def _can_run_mst(G, weight="weight", algorithm="kruskal", ignore_nan=False, **kwargs):
@@ -46,6 +68,8 @@ def _can_run_mst(G, weight="weight", algorithm="kruskal", ignore_nan=False, **kw
         return f"unknown spanning tree algorithm {algorithm!r}"
     if ignore_nan:
         return "rustworkx minimum_spanning_tree does not support ignore_nan"
+    if algorithm == "boruvka" and G.is_multigraph():
+        return "NetworkX's boruvka_mst_edges rejects multigraphs"
     return True
 
 
@@ -59,11 +83,13 @@ def minimum_spanning_tree(G, weight="weight", algorithm="kruskal", ignore_nan=Fa
     _ = algorithm, ignore_nan
     rwg = as_rw_graph(G)
     require_undirected(rwg)
-    tree = rx.minimum_spanning_tree(rwg.rx_graph, edge_weight_fn(weight))
+    graph, weight_fn = _tree_container(rwg, weight)
+    tree = rx.minimum_spanning_tree(graph, weight_fn)
     return _rebuild(rwg, tree.weighted_edge_list())
 
 
 minimum_spanning_tree.can_run = _can_run_mst
+minimum_spanning_tree.multigraph = True
 
 
 def _can_run_mst_edges(
@@ -75,16 +101,27 @@ def _can_run_mst_edges(
 def minimum_spanning_edges(
     G, algorithm="kruskal", weight="weight", keys=True, data=True, ignore_nan=False
 ):
-    """Yield the edges of a minimum spanning forest via rustworkx."""
-    _ = algorithm, keys, ignore_nan
+    """Yield the edges of a minimum spanning forest via rustworkx.
+
+    On a multigraph the edges carry NetworkX keys when ``keys`` is set, and
+    the lightest edge of every parallel bundle is the one chosen.
+    """
+    _ = algorithm, ignore_nan
     rwg = as_rw_graph(G)
     require_undirected(rwg)
     index_to_node = rwg.index_to_node
-    edges = rx.minimum_spanning_edges(rwg.rx_graph, edge_weight_fn(weight))
+    multigraph = rwg.is_multigraph()
+    graph, weight_fn = _tree_container(rwg, weight)
 
     def _iter():
-        for u, v, payload in edges:
+        # Run the kernel lazily: NetworkX's generator raises for a NaN weight
+        # only once iterated, and its tests rely on that timing.
+        for u, v, payload in rx.minimum_spanning_edges(graph, weight_fn):
             edge = (index_to_node[u], index_to_node[v])
+            if multigraph:
+                if keys:
+                    edge = (*edge, rwg.edge_keys[payload])
+                payload = rwg.rx_graph.get_edge_data_by_index(payload)
             if data:
                 yield (*edge, payload if isinstance(payload, dict) else {})
             else:
@@ -94,6 +131,7 @@ def minimum_spanning_edges(
 
 
 minimum_spanning_edges.can_run = _can_run_mst_edges
+minimum_spanning_edges.multigraph = True
 
 
 def _can_run_steiner_tree(G, terminal_nodes, weight="weight", method=None, **kwargs):
@@ -114,7 +152,8 @@ def steiner_tree(G, terminal_nodes, weight="weight", method=None):
     rwg = as_rw_graph(G)
     require_undirected(rwg)
     terminals = require_nodes(rwg, terminal_nodes, kind="Terminal")
-    tree = rx.steiner_tree(rwg.rx_graph, terminals, edge_weight_fn(weight))
+    graph, weight_fn = _tree_container(rwg, weight)
+    tree = rx.steiner_tree(graph, terminals, weight_fn)
     out = _rebuild(rwg, tree.weighted_edge_list())
     # NetworkX returns only the nodes the tree actually spans.
     out.remove_nodes_from([node for node in list(out) if out.degree(node) == 0])
@@ -123,6 +162,7 @@ def steiner_tree(G, terminal_nodes, weight="weight", method=None):
 
 
 steiner_tree.can_run = _can_run_steiner_tree
+steiner_tree.multigraph = True
 
 
 def _can_run_metric_closure(G, weight="weight", **kwargs):
@@ -172,3 +212,4 @@ def metric_closure(G, weight="weight"):
 
 
 metric_closure.can_run = _can_run_metric_closure
+metric_closure.multigraph = True

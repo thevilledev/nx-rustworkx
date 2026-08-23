@@ -15,6 +15,7 @@ from nx_rustworkx.algorithms._utils import (
     require_directed,
     require_node,
     require_undirected,
+    simple_view,
 )
 
 __all__ = [
@@ -55,6 +56,7 @@ def is_connected(G):
 
 
 is_connected.can_run = can_run_undirected
+is_connected.multigraph = True
 
 
 def is_weakly_connected(G):
@@ -70,6 +72,7 @@ def is_weakly_connected(G):
 
 
 is_weakly_connected.can_run = can_run_directed
+is_weakly_connected.multigraph = True
 
 
 def connected_components(G):
@@ -81,6 +84,7 @@ def connected_components(G):
 
 
 connected_components.can_run = can_run_undirected
+connected_components.multigraph = True
 
 
 def weakly_connected_components(G):
@@ -92,6 +96,7 @@ def weakly_connected_components(G):
 
 
 weakly_connected_components.can_run = can_run_directed
+weakly_connected_components.multigraph = True
 
 
 def number_connected_components(G):
@@ -103,6 +108,7 @@ def number_connected_components(G):
 
 
 number_connected_components.can_run = can_run_undirected
+number_connected_components.multigraph = True
 
 
 def number_weakly_connected_components(G):
@@ -113,6 +119,7 @@ def number_weakly_connected_components(G):
 
 
 number_weakly_connected_components.can_run = can_run_directed
+number_weakly_connected_components.multigraph = True
 
 
 def strongly_connected_components(G):
@@ -123,6 +130,7 @@ def strongly_connected_components(G):
 
 
 strongly_connected_components.can_run = can_run_directed
+strongly_connected_components.multigraph = True
 
 
 def number_strongly_connected_components(G):
@@ -133,6 +141,7 @@ def number_strongly_connected_components(G):
 
 
 number_strongly_connected_components.can_run = can_run_directed
+number_strongly_connected_components.multigraph = True
 
 
 def is_strongly_connected(G):
@@ -144,6 +153,7 @@ def is_strongly_connected(G):
 
 
 is_strongly_connected.can_run = can_run_directed
+is_strongly_connected.multigraph = True
 
 
 def is_semiconnected(G):
@@ -156,6 +166,7 @@ def is_semiconnected(G):
 
 
 is_semiconnected.can_run = can_run_directed
+is_semiconnected.multigraph = True
 
 
 def node_connected_component(G, n):
@@ -168,16 +179,27 @@ def node_connected_component(G, n):
 
 
 node_connected_component.can_run = can_run_undirected
+node_connected_component.multigraph = True
+
+
+def _dfs_graph(rwg):
+    """The container for DFS-tree kernels: parallel edges collapsed.
+
+    rustworkx's bridges/articulation/biconnected kernels assume a simple graph,
+    and NetworkX walks ``G[v]`` so it never sees parallel edges either.
+    """
+    return simple_view(rwg).graph if rwg.is_multigraph() else rwg.rx_graph
 
 
 def articulation_points(G):
     """Yield the articulation points of an undirected graph."""
     rwg = as_rw_graph(G)
     require_undirected(rwg)
-    return iter(remap_nodes(rwg, rx.articulation_points(rwg.rx_graph)))
+    return iter(remap_nodes(rwg, rx.articulation_points(_dfs_graph(rwg))))
 
 
 articulation_points.can_run = can_run_undirected
+articulation_points.multigraph = True
 
 
 def _can_run_bridges(G, root=None, **kwargs):
@@ -193,6 +215,8 @@ def bridges(G, root=None):
     """
     rwg = as_rw_graph(G)
     require_undirected(rwg)
+    if rwg.is_multigraph():
+        return _multigraph_bridges(rwg, root)
     component = None
     if root is not None:
         index = require_node(rwg, root)
@@ -208,7 +232,30 @@ def bridges(G, root=None):
     )
 
 
+def _multigraph_bridges(rwg, root):
+    """NetworkX finds bridges on ``nx.Graph(G)`` and then drops any pair that
+    has parallel edges, since removing one of them never disconnects anything.
+    rustworkx reports such a pair as a bridge, so run on the collapsed view."""
+    view = simple_view(rwg)
+    graph = view.graph
+    component = None
+    if root is not None:
+        component = set(rx.node_connected_component(graph, require_node(rwg, root)))
+    bridge_set = {frozenset(pair) for pair in rx.bridges(graph)}
+    index_to_node = rwg.index_to_node
+    return iter(
+        [
+            (index_to_node[u], index_to_node[v])
+            for collapsed, (u, v) in zip(graph.edge_indices(), graph.edge_list())
+            if view.multiplicity(collapsed) == 1
+            and frozenset((u, v)) in bridge_set
+            and (component is None or u in component)
+        ]
+    )
+
+
 bridges.can_run = _can_run_bridges
+bridges.multigraph = True
 
 
 def biconnected_components(G):
@@ -217,7 +264,7 @@ def biconnected_components(G):
     require_undirected(rwg)
     index_to_node = rwg.index_to_node
     grouped: dict[int, set] = {}
-    for (u, v), component in rx.biconnected_components(rwg.rx_graph).items():
+    for (u, v), component in rx.biconnected_components(_dfs_graph(rwg)).items():
         nodes = grouped.setdefault(component, set())
         nodes.add(index_to_node[u])
         nodes.add(index_to_node[v])
@@ -225,6 +272,7 @@ def biconnected_components(G):
 
 
 biconnected_components.can_run = can_run_undirected
+biconnected_components.multigraph = True
 
 
 def _can_run_condensation(G, scc=None, **kwargs):
@@ -259,6 +307,7 @@ def condensation(G, scc=None):
 
 
 condensation.can_run = _can_run_condensation
+condensation.multigraph = True
 
 
 def _can_run_stoer_wagner(G, weight="weight", heap=None, **kwargs):

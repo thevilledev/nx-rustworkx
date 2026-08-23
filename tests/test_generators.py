@@ -8,6 +8,7 @@ import pytest
 from nx_rustworkx import generators
 from nx_rustworkx.convert import rustworkx_graph_to_nx
 from nx_rustworkx.graph import RustworkxGraph
+from nx_rustworkx.interface import BackendInterface
 
 
 def assert_matches_networkx(name, *args, **kwargs):
@@ -143,6 +144,8 @@ def test_multigraph_create_using_falls_back(name):
         else (4,)
     )
     assert func.can_run(*args, create_using=nx.MultiGraph) is not True
+    # The interface gate refuses the class too, so dispatch never reaches the kernel.
+    assert BackendInterface.can_run(name, args, {"create_using": nx.MultiGraph}) is not True
     with pytest.raises(nx.NetworkXError):
         func(*args, create_using=nx.MultiGraph)
 

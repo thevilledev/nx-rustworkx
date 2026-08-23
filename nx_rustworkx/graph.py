@@ -140,6 +140,14 @@ class _EdgeDataView:
             return {self._nbunch}
         return set(self._nbunch)
 
+    def _skip(self, wanted, u, v) -> bool:
+        """nbunch filter: out-edges of the nodes on a digraph, incident edges otherwise."""
+        if wanted is None:
+            return False
+        if u in wanted:
+            return False
+        return self._graph.is_directed() or v not in wanted
+
     def __iter__(self):
         graph = self._graph
         wanted = self._wanted()
@@ -147,7 +155,7 @@ class _EdgeDataView:
         for u_idx, v_idx, payload in graph.rx_graph.weighted_edge_list():
             u = index_to_node[u_idx]
             v = index_to_node[v_idx]
-            if wanted is not None and u not in wanted and v not in wanted:
+            if self._skip(wanted, u, v):
                 continue
             if self._data is False:
                 yield u, v
@@ -224,6 +232,10 @@ class RustworkxGraph:
 
     __networkx_backend__ = "rustworkx"
 
+    #: rustworkx edge index -> NetworkX edge key. Only ``RustworkxMultiGraph``
+    #: tracks keys; a simple graph has none, so this stays ``None`` here.
+    edge_keys: dict[int, Any] | None = None
+
     def __init__(
         self,
         rx_graph: Any,
@@ -242,11 +254,16 @@ class RustworkxGraph:
         self._directed = directed
         self.__networkx_cache__: dict[str, Any] = {}
 
-    @classmethod
-    def empty(cls, *, directed: bool = False, graph_attrs: dict[str, Any] | None = None):
+    @staticmethod
+    def _new_container(directed: bool):
+        """Empty rustworkx container of the kind this wrapper class manages."""
         import rustworkx as rx
 
-        rx_graph = rx.PyDiGraph(multigraph=False) if directed else rx.PyGraph(multigraph=False)
+        return rx.PyDiGraph(multigraph=False) if directed else rx.PyGraph(multigraph=False)
+
+    @classmethod
+    def empty(cls, *, directed: bool = False, graph_attrs: dict[str, Any] | None = None):
+        rx_graph = cls._new_container(directed)
         return cls(
             rx_graph,
             {},
@@ -271,16 +288,16 @@ class RustworkxGraph:
         attrs = dict(graph_attrs) if graph_attrs else {}
         if data is None:
             return cls.empty(directed=directed, graph_attrs=attrs)
-        if isinstance(data, cls):
-            out = data.copy()
+        if isinstance(data, RustworkxGraph):
+            out = cls._adopt(data)
             if out.is_directed() != directed:
                 out = out.to_directed() if directed else out.to_undirected()
             out.graph.update(attrs)
             return out
         if isinstance(data, nx.Graph):
-            if data.is_multigraph():
-                raise nx.NetworkXError("nx-rustworkx does not support MultiGraph")
-            out = convert_from_nx(data, preserve_all_attrs=True)
+            if data.is_multigraph() and not cls._is_multigraph_class():
+                raise nx.NetworkXError("nx-rustworkx does not collapse a MultiGraph into a Graph")
+            out = cls._adopt(convert_from_nx(data, preserve_all_attrs=True))
             if out.is_directed() != directed:
                 out = out.to_directed() if directed else out.to_undirected()
             out.graph.update(attrs)
@@ -289,12 +306,31 @@ class RustworkxGraph:
         try:
             out.add_edges_from(data)
         except Exception:
-            tmp = nx.DiGraph(data) if directed else nx.Graph(data)
-            if tmp.is_multigraph():
-                raise nx.NetworkXError("nx-rustworkx does not support MultiGraph")
-            out = convert_from_nx(tmp, preserve_all_attrs=True)
+            tmp = cls._nx_class(directed)(data)
+            out = cls._adopt(convert_from_nx(tmp, preserve_all_attrs=True))
             out.graph.update(attrs)
         return out
+
+    @classmethod
+    def _is_multigraph_class(cls) -> bool:
+        return False
+
+    @classmethod
+    def _nx_class(cls, directed: bool):
+        import networkx as nx
+
+        return nx.DiGraph if directed else nx.Graph
+
+    @classmethod
+    def _adopt(cls, other: RustworkxGraph) -> RustworkxGraph:
+        """A copy of ``other`` as this class; only a multigraph class can widen."""
+        import networkx as nx
+
+        if type(other) is cls:
+            return other.copy()
+        if other.is_multigraph():
+            raise nx.NetworkXError("nx-rustworkx does not collapse a MultiGraph into a Graph")
+        return other.copy()
 
     def is_directed(self) -> bool:
         return self._directed
@@ -305,8 +341,10 @@ class RustworkxGraph:
     def number_of_nodes(self) -> int:
         return self.rx_graph.num_nodes()
 
-    def number_of_edges(self) -> int:
-        return self.rx_graph.num_edges()
+    def number_of_edges(self, u=None, v=None) -> int:
+        if u is None:
+            return self.rx_graph.num_edges()
+        return int(self.has_edge(u, v))
 
     def __len__(self) -> int:
         return self.rx_graph.num_nodes()
@@ -368,6 +406,18 @@ class RustworkxGraph:
         except KeyError:
             return False
 
+    def get_edge_data(self, u, v, default=None):
+        try:
+            u_idx = self.node_to_index[u]
+            v_idx = self.node_to_index[v]
+        except KeyError:
+            return default
+        rx_graph = self.rx_graph
+        if not rx_graph.has_edge(u_idx, v_idx):
+            return default
+        payload = rx_graph.get_edge_data(u_idx, v_idx)
+        return payload if payload is not None else {}
+
     def add_node(self, node_for_adding, **attr):
         if node_for_adding in self.node_to_index:
             if attr:
@@ -423,6 +473,9 @@ class RustworkxGraph:
             else:
                 self.add_edge(u, v)
 
+    def add_weighted_edges_from(self, ebunch_to_add, weight="weight", **attr):
+        self.add_edges_from(((u, v, {weight: d}) for u, v, d in ebunch_to_add), **attr)
+
     def remove_node(self, n):
         idx = self.node_to_index[n]
         self.rx_graph.remove_node(idx)
@@ -463,9 +516,7 @@ class RustworkxGraph:
     def to_directed(self) -> RustworkxGraph:
         if self._directed:
             return self.copy()
-        import rustworkx as rx
-
-        directed = rx.PyDiGraph(multigraph=False)
+        directed = self._new_container(True)
         directed.add_nodes_from(self._dense_payloads())
         for u, v, data in self.rx_graph.weighted_edge_list():
             directed.add_edge(u, v, data)
@@ -483,9 +534,7 @@ class RustworkxGraph:
     def to_undirected(self) -> RustworkxGraph:
         if not self._directed:
             return self.copy()
-        import rustworkx as rx
-
-        undirected = rx.PyGraph(multigraph=False)
+        undirected = self._new_container(False)
         undirected.add_nodes_from(self._dense_payloads())
         seen = set()
         for u, v, data in self.rx_graph.weighted_edge_list():
@@ -550,3 +599,413 @@ class RustworkxGraph:
             f"Rustworkx{kind} with {self.number_of_nodes()} nodes "
             f"and {self.number_of_edges()} edges"
         )
+
+
+class _MultiAdjView(_AdjView):
+    """``G.adj`` for a multigraph: ``{nbr: {key: attrs}}`` keyed by node IDs."""
+
+    def __getitem__(self, node: Any) -> dict:
+        return self._graph._keyed_neighbor_items(node)
+
+
+class _MultiEdgeView(_EdgeView):
+    """``G.edges`` for a multigraph: iterates ``(u, v, key)`` like NetworkX."""
+
+    __slots__ = ()
+
+    def __iter__(self):
+        return iter(_MultiEdgeDataView(self._graph, None, False, None, True))
+
+    def __contains__(self, edge) -> bool:
+        try:
+            u, v, key = edge
+        except ValueError:
+            try:
+                u, v = edge
+            except ValueError:
+                raise ValueError("MultiEdge must have length 2 or 3") from None
+            key = 0
+        return self._graph.has_edge(u, v, key)
+
+    def __call__(self, nbunch=None, data=False, *, default=None, keys=False):
+        if nbunch is None and data is False and keys is True:
+            return self
+        return _MultiEdgeDataView(self._graph, nbunch, data, default, keys)
+
+
+class _MultiEdgeDataView(_EdgeDataView):
+    """``G.edges(nbunch=..., data=..., keys=...)`` for a multigraph."""
+
+    __slots__ = ("_keys",)
+
+    def __init__(self, graph: RustworkxGraph, nbunch, data, default, keys):
+        super().__init__(graph, nbunch, data, default)
+        self._keys = keys
+
+    def __iter__(self):
+        graph = self._graph
+        wanted = self._wanted()
+        index_to_node = graph.index_to_node
+        edge_keys = graph.edge_keys
+        for idx, (u_idx, v_idx, payload) in graph.rx_graph.edge_index_map().items():
+            u = index_to_node[u_idx]
+            v = index_to_node[v_idx]
+            if self._skip(wanted, u, v):
+                continue
+            edge = (u, v, edge_keys[idx]) if self._keys else (u, v)
+            if self._data is False:
+                yield edge
+                continue
+            data = payload if isinstance(payload, dict) else {}
+            if self._data is True:
+                yield (*edge, data)
+            else:
+                yield (*edge, data.get(self._data, self._default))
+
+
+class RustworkxMultiGraph(RustworkxGraph):
+    """A rustworkx multigraph plus NetworkX's edge keys.
+
+    rustworkx stores parallel edges natively and addresses every edge by a
+    stable integer index. NetworkX addresses them by ``(u, v, key)``, so this
+    wrapper keeps ``edge_keys`` (edge index -> key) next to the node map. The
+    dict is insertion-ordered by edge addition, which is what gives
+    ``remove_edge(u, v)`` NetworkX's "pop the most recently added key"
+    behaviour even though rustworkx reuses freed indices.
+    """
+
+    def __init__(
+        self,
+        rx_graph: Any,
+        node_to_index: dict[Any, int],
+        index_to_node: list[Any],
+        *,
+        directed: bool,
+        graph_attrs: dict[str, Any] | None = None,
+        node_attrs: dict[Any, dict[str, Any]] | None = None,
+        edge_keys: dict[int, Any] | None = None,
+    ):
+        super().__init__(
+            rx_graph,
+            node_to_index,
+            index_to_node,
+            directed=directed,
+            graph_attrs=graph_attrs,
+            node_attrs=node_attrs,
+        )
+        if edge_keys is None:
+            # A container without parallel edges: every NetworkX key is 0.
+            edge_keys = dict.fromkeys(rx_graph.edge_indices(), 0)
+        self.edge_keys: dict[int, Any] = edge_keys
+
+    @staticmethod
+    def _new_container(directed: bool):
+        import rustworkx as rx
+
+        return rx.PyDiGraph(multigraph=True) if directed else rx.PyGraph(multigraph=True)
+
+    @classmethod
+    def _is_multigraph_class(cls) -> bool:
+        return True
+
+    @classmethod
+    def _nx_class(cls, directed: bool):
+        import networkx as nx
+
+        return nx.MultiDiGraph if directed else nx.MultiGraph
+
+    @classmethod
+    def _adopt(cls, other: RustworkxGraph) -> RustworkxMultiGraph:
+        """A copy of ``other`` as a multigraph; a simple graph's edges get key 0."""
+        if isinstance(other, RustworkxMultiGraph):
+            return other.copy()
+        container = cls._new_container(other.is_directed())
+        container.add_nodes_from(other._dense_payloads())
+        container.add_edges_from(
+            [(u, v, _copy_payload(data)) for u, v, data in other.rx_graph.weighted_edge_list()]
+        )
+        return cls(
+            container,
+            dict(other.node_to_index),
+            list(other.index_to_node),
+            directed=other.is_directed(),
+            graph_attrs=other.graph,
+            node_attrs=other.node_attrs,
+        )
+
+    def is_multigraph(self) -> bool:
+        return True
+
+    @property
+    def adj(self) -> _AdjView:
+        return _MultiAdjView(self)
+
+    @property
+    def edges(self) -> _EdgeView:
+        return _MultiEdgeView(self)
+
+    # --- keyed edge lookup ---------------------------------------------------
+
+    def _edge_indices(self, u, v) -> list[int]:
+        """rustworkx indices of the u-v bundle, oldest first (NetworkX key order)."""
+        try:
+            u_idx = self.node_to_index[u]
+            v_idx = self.node_to_index[v]
+        except KeyError:
+            return []
+        # rustworkx lists the newest edge first; NetworkX keydicts are oldest first.
+        return sorted(self.rx_graph.edge_indices_from_endpoints(u_idx, v_idx))
+
+    def _payload_dict(self, idx: int) -> dict:
+        payload = self.rx_graph.get_edge_data_by_index(idx)
+        return payload if isinstance(payload, dict) else {}
+
+    def has_edge(self, u, v, key=None) -> bool:
+        indices = self._edge_indices(u, v)
+        if key is None:
+            return bool(indices)
+        edge_keys = self.edge_keys
+        return any(edge_keys[idx] == key for idx in indices)
+
+    def get_edge_data(self, u, v, key=None, default=None):
+        indices = self._edge_indices(u, v)
+        if not indices:
+            return default
+        edge_keys = self.edge_keys
+        if key is None:
+            return {edge_keys[idx]: self._payload_dict(idx) for idx in indices}
+        for idx in indices:
+            if edge_keys[idx] == key:
+                return self._payload_dict(idx)
+        return default
+
+    def number_of_edges(self, u=None, v=None) -> int:
+        if u is None:
+            return self.rx_graph.num_edges()
+        return len(self._edge_indices(u, v))
+
+    def new_edge_key(self, u, v):
+        """NetworkX's key allocator: the bundle size, bumped past any collision."""
+        edge_keys = self.edge_keys
+        used = {edge_keys[idx] for idx in self._edge_indices(u, v)}
+        key = len(used)
+        while key in used:
+            key += 1
+        return key
+
+    def _keyed_neighbor_items(self, node: Any) -> dict:
+        idx = self.node_to_index[node]
+        # Outgoing edges only on a PyDiGraph, as G.adj means. rustworkx reports
+        # every incident edge oriented away from the queried node, a self-loop once.
+        incident = self.rx_graph.incident_edge_index_map(idx)
+        index_to_node = self.index_to_node
+        edge_keys = self.edge_keys
+        out: dict = {}
+        for edge_idx in sorted(incident):
+            _u, nbr_idx, payload = incident[edge_idx]
+            keyed = out.setdefault(index_to_node[nbr_idx], {})
+            keyed[edge_keys[edge_idx]] = payload if payload is not None else {}
+        return out
+
+    # --- mutation -----------------------------------------------------------
+
+    def _add_keyed_edge(self, u, v, key, data: dict | None):
+        """Add or update the (u, v, key) edge; returns the key NetworkX would."""
+        rx_graph = self.rx_graph
+        edge_keys = self.edge_keys
+        if key is None:
+            key = self.new_edge_key(u, v)
+        else:
+            for idx in self._edge_indices(u, v):
+                if edge_keys[idx] == key:
+                    if data:
+                        payload = rx_graph.get_edge_data_by_index(idx)
+                        if isinstance(payload, dict):
+                            payload.update(data)
+                        else:
+                            rx_graph.update_edge_by_index(idx, dict(data))
+                    self.__networkx_cache__.clear()
+                    return key
+        idx = rx_graph.add_edge(self.node_to_index[u], self.node_to_index[v], data)
+        # Assign, never setdefault: rustworkx reuses a freed index, and the old
+        # key was dropped from the map when that edge was removed.
+        edge_keys[idx] = key
+        self.__networkx_cache__.clear()
+        return key
+
+    def add_edge(self, u_of_edge, v_of_edge, key=None, **attr):
+        self.add_node(u_of_edge)
+        self.add_node(v_of_edge)
+        return self._add_keyed_edge(u_of_edge, v_of_edge, key, dict(attr) if attr else None)
+
+    def add_edges_from(self, ebunch_to_add, **attr):
+        import networkx as nx
+
+        keys = []
+        for edge in ebunch_to_add:
+            count = len(edge)
+            if count == 4:
+                u, v, key, dd = edge
+            elif count == 3:
+                u, v, dd = edge
+                key = None
+            elif count == 2:
+                u, v = edge
+                dd = {}
+                key = None
+            else:
+                raise nx.NetworkXError(f"Edge tuple {edge} must be a 2-tuple, 3-tuple or 4-tuple.")
+            data = dict(attr)
+            try:
+                data.update(dd)
+            except (TypeError, ValueError):
+                if count != 3:
+                    raise
+                key = dd  # a 3-tuple whose third value is not a dict names the key
+            self.add_node(u)
+            self.add_node(v)
+            keys.append(self._add_keyed_edge(u, v, key, data or None))
+        return keys
+
+    def remove_node(self, n):
+        idx = self.node_to_index[n]
+        rx_graph = self.rx_graph
+        incident = (
+            rx_graph.incident_edge_index_map(idx, all_edges=True)
+            if self._directed
+            else rx_graph.incident_edge_index_map(idx)
+        )
+        for edge_idx in incident:
+            self.edge_keys.pop(edge_idx, None)
+        super().remove_node(n)
+
+    def remove_edge(self, u, v, key=None):
+        import networkx as nx
+
+        indices = self._edge_indices(u, v)
+        if not indices:
+            raise nx.NetworkXError(f"The edge {u}-{v} is not in the graph.")
+        edge_keys = self.edge_keys
+        if key is None:
+            # NetworkX pops the most recently added key of the bundle.
+            bundle = set(indices)
+            idx = next(i for i in reversed(edge_keys) if i in bundle)
+        else:
+            idx = next((i for i in indices if edge_keys[i] == key), None)
+            if idx is None:
+                raise nx.NetworkXError(f"The edge {u}-{v} with key {key} is not in the graph.")
+        self.rx_graph.remove_edge_from_index(idx)
+        del edge_keys[idx]
+        self.__networkx_cache__.clear()
+
+    def clear(self):
+        super().clear()
+        self.edge_keys.clear()
+
+    def copy(self) -> RustworkxMultiGraph:
+        rx_graph = self.rx_graph.copy()
+        # rustworkx's copy shares payload objects; NetworkX's copy gives every
+        # edge its own attribute dict.
+        for idx, (_u, _v, payload) in rx_graph.edge_index_map().items():
+            if isinstance(payload, dict):
+                rx_graph.update_edge_by_index(idx, dict(payload))
+        return type(self)(
+            rx_graph,
+            dict(self.node_to_index),
+            list(self.index_to_node),
+            directed=self._directed,
+            graph_attrs=self.graph,
+            node_attrs=self.node_attrs,
+            edge_keys=dict(self.edge_keys),
+        )
+
+    def to_directed(self) -> RustworkxMultiGraph:
+        if self._directed:
+            return self.copy()
+        directed = self._new_container(True)
+        directed.add_nodes_from(self._dense_payloads())
+        edge_map = self.rx_graph.edge_index_map()
+        edge_keys: dict[int, Any] = {}
+        # NetworkX emits (u, v, k) and (v, u, k) with copied data; a self-loop once.
+        for idx, key in self.edge_keys.items():
+            u, v, data = edge_map[idx]
+            edge_keys[directed.add_edge(u, v, _copy_payload(data))] = key
+            if u != v:
+                edge_keys[directed.add_edge(v, u, _copy_payload(data))] = key
+        return type(self)(
+            directed,
+            dict(self.node_to_index),
+            list(self.index_to_node),
+            directed=True,
+            graph_attrs=self.graph,
+            node_attrs=self.node_attrs,
+            edge_keys=edge_keys,
+        )
+
+    def to_undirected(self) -> RustworkxMultiGraph:
+        if not self._directed:
+            return self.copy()
+        undirected = self._new_container(False)
+        undirected.add_nodes_from(self._dense_payloads())
+        edge_map = self.rx_graph.edge_index_map()
+        edge_keys: dict[int, Any] = {}
+        slots: dict = {}
+        # NetworkX merges (u, v, k) and (v, u, k) into one edge; later data wins.
+        for idx, key in self.edge_keys.items():
+            u, v, data = edge_map[idx]
+            slot = (u, v, key) if u <= v else (v, u, key)
+            existing = slots.get(slot)
+            if existing is None:
+                new_idx = undirected.add_edge(u, v, _copy_payload(data))
+                slots[slot] = new_idx
+                edge_keys[new_idx] = key
+                continue
+            payload = undirected.get_edge_data_by_index(existing)
+            if isinstance(payload, dict) and isinstance(data, dict):
+                payload.update(data)
+            elif data is not None:
+                undirected.update_edge_by_index(existing, _copy_payload(data))
+        return type(self)(
+            undirected,
+            dict(self.node_to_index),
+            list(self.index_to_node),
+            directed=False,
+            graph_attrs=self.graph,
+            node_attrs=self.node_attrs,
+            edge_keys=edge_keys,
+        )
+
+    def _compact(self) -> None:
+        """Rewrite rustworkx indices densely, keeping parallel edges and keys."""
+        edge_map = self.rx_graph.edge_index_map()
+        index_to_node = self.index_to_node
+        keys = list(self.edge_keys.values())
+        edges = [
+            (index_to_node[edge_map[idx][0]], index_to_node[edge_map[idx][1]], edge_map[idx][2])
+            for idx in self.edge_keys
+        ]
+        nodes = [index_to_node[i] for i in self.rx_graph.node_indices()]
+        graph_attrs = dict(self.graph)
+        node_attrs = dict(self.node_attrs)
+        directed = self._directed
+        self.clear()
+        self._directed = directed
+        self.graph.update(graph_attrs)
+        self.node_attrs.update(node_attrs)
+        self.add_nodes_from(nodes)
+        node_to_index = self.node_to_index
+        new_indices = self.rx_graph.add_edges_from(
+            [(node_to_index[u], node_to_index[v], data) for u, v, data in edges]
+        )
+        self.edge_keys = dict(zip(new_indices, keys))
+
+    def __str__(self) -> str:
+        kind = "MultiDiGraph" if self._directed else "MultiGraph"
+        return (
+            f"Rustworkx{kind} with {self.number_of_nodes()} nodes "
+            f"and {self.number_of_edges()} edges"
+        )
+
+
+def _copy_payload(data):
+    return dict(data) if isinstance(data, dict) else data

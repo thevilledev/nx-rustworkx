@@ -50,7 +50,12 @@ Usage, configuration, supported algorithms, caveats, and benchmarks:
 
 ## Limits
 
-- Simple graphs and digraphs only; no multigraphs.
+- `MultiGraph` and `MultiDiGraph` dispatch with NetworkX's parallel-edge
+  semantics (minimum weight for paths, summed weights for PageRank, collapsed
+  bundles for betweenness and bridges, keyed results for spanning trees). The
+  14 functions NetworkX itself refuses on multigraphs, plus `complement`, the
+  graph products and `vf2pp_all_isomorphisms`, fall back to NetworkX; so do
+  the native generators when `create_using` is a multigraph class.
 - No custom weight callables.
 - The rustworkx-backed graph object does not implement drawing or I/O.
 - Some valid results may differ in ordering or floating-point rounding.

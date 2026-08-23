@@ -7,17 +7,11 @@ import rustworkx as rx
 
 from nx_rustworkx.algorithms._utils import (
     as_rw_graph,
-    reject_multigraph,
     remap_nodes,
     require_node,
 )
 
 __all__ = ["all_simple_paths"]
-
-
-def _can_run_all_simple_paths(G, source, target, cutoff=None, **kwargs):
-    _ = source, target, cutoff, kwargs
-    return reject_multigraph(G) or True
 
 
 def _resolve_targets(rwg, target):
@@ -56,4 +50,4 @@ def all_simple_paths(G, source, target, cutoff=None):
     return _iter()
 
 
-all_simple_paths.can_run = _can_run_all_simple_paths
+all_simple_paths.multigraph = True

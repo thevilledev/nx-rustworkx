@@ -31,8 +31,9 @@ def test_should_run_accepts_large_enough_graphs():
 
 
 def test_can_run_rejects_multigraph():
+    # core_number never accepts multigraphs: NetworkX itself raises for them.
     G = nx.MultiGraph([(0, 1), (0, 1)])
-    result = BackendInterface.can_run("betweenness_centrality", (G,), {})
+    result = BackendInterface.can_run("core_number", (G,), {})
     assert result is not True
     assert "MultiGraph" in str(result)
 

@@ -341,8 +341,12 @@ forgotten:
   all-pairs-based implementation is safe to auto-dispatch. (Since shipped
   separately: `should_run` declines the all-pairs matrix past ~4096 nodes and
   explicit `backend="rustworkx"` accepts the cost.)
-- **Multigraph support**: a real scope decision — the README currently sells
-  its absence as a feature — not a generator concern.
+- **Multigraph support**: a real scope decision — not a generator concern.
+  Since decided and shipped; see `multigraph-support.md`. The native kernel
+  generators still fall back for a multigraph `create_using`, because
+  NetworkX's generators produce parallel edges in degenerate sizes
+  (`cycle_graph(2, create_using=nx.MultiGraph)`, periodic grids) that are
+  not worth reproducing in Rust.
 - **`lexicographical_topological_sort`**: rustworkx's string-key requirement
   makes it semantically unsafe to claim.
 

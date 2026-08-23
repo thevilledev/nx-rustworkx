@@ -3,6 +3,7 @@
 from __future__ import annotations
 
 from collections.abc import Mapping
+from dataclasses import dataclass
 from typing import Any
 
 import networkx as nx
@@ -48,9 +49,23 @@ def graphs_from_call(args, kwargs) -> list:
     return found
 
 
-def reject_multigraph(G) -> str | None:
-    if G.is_multigraph():
-        return "nx-rustworkx does not support MultiGraph or MultiDiGraph"
+def is_multigraph_input(obj) -> bool:
+    """True for a MultiGraph/MultiDiGraph instance or class (``create_using``)."""
+    if isinstance(obj, type):
+        return issubclass(obj, nx.MultiGraph)
+    return bool(obj.is_multigraph())
+
+
+def multigraph_reason(name, args, kwargs) -> str | None:
+    """The can_run refusal for a multigraph argument, or None if there is none.
+
+    ``BackendInterface.can_run`` applies this to every function that does not
+    declare ``multigraph = True``; it runs before the function's own checker so
+    a refused multigraph never reaches per-function logic.
+    """
+    for graph in graphs_from_call(args, kwargs):
+        if is_multigraph_input(graph):
+            return f"nx-rustworkx {name} does not accept MultiGraph or MultiDiGraph inputs"
     return None
 
 
@@ -61,12 +76,7 @@ def reject_callable_weight(weight) -> str | None:
 
 
 def default_can_run(*args, weight=None, **kwargs):
-    graphs = [a for a in args if is_graph_like(a)]
-    graphs.extend(v for v in kwargs.values() if is_graph_like(v))
-    for graph in graphs:
-        reason = reject_multigraph(graph)
-        if reason:
-            return reason
+    _ = args, kwargs
     return reject_callable_weight(weight) or True
 
 
@@ -153,12 +163,112 @@ def edge_weight_fn(weight):
     return _fn
 
 
+@dataclass(frozen=True)
+class SimpleView:
+    """``rwg.rx_graph`` with every bundle of parallel edges collapsed to one edge.
+
+    ``graph`` is a ``multigraph=False`` container over the same node indices.
+    The payload of collapsed edge ``c`` is the ORIGINAL edge index of the
+    bundle's representative: the lowest index (NetworkX's first key) when
+    unweighted, else the lowest-index member of minimum weight, which is
+    NetworkX's min-over-parallel-edges rule with its stable first-key tie-break.
+    Kernels that count paths (betweenness) or walk DFS trees (bridges,
+    articulation points) run here, since NetworkX reads ``G[u][v]`` and never
+    sees parallel edges; kernels that return edges run here so the payload
+    leads back to a NetworkX key.
+    """
+
+    graph: Any
+    bundles: dict[int, list[int]]  # collapsed index -> original indices, ascending
+    orig_to_simple: dict[int, int]
+    weights: dict[int, float] | None  # original index -> weight; None when unweighted
+
+    def representative(self, collapsed: int) -> int:
+        return self.graph.get_edge_data_by_index(collapsed)
+
+    def multiplicity(self, collapsed: int) -> int:
+        return len(self.bundles[collapsed])
+
+    @property
+    def weight_fn(self):
+        """Weight callback for kernels run on ``graph`` (payload = original index)."""
+        if self.weights is None:
+            return lambda _index: 1.0
+        return self.weights.__getitem__
+
+
+def simple_view(rwg: RustworkxGraph, weight=None) -> SimpleView:
+    """The cached :class:`SimpleView` of a multigraph wrapper for ``weight``.
+
+    Cached on the wrapper's ``__networkx_cache__`` under a backend-private key,
+    so every mutator's ``.clear()`` invalidates it and NetworkX's own
+    ``"backends"`` entry is untouched.
+    """
+    if not rwg.is_multigraph():
+        raise ValueError("simple_view is only defined for multigraph wrappers")
+    cache = rwg.__networkx_cache__
+    views = cache.setdefault("nx_rustworkx", {}) if cache is not None else {}
+    key = ("simple_view", weight)
+    view = views.get(key)
+    if view is None:
+        view = views[key] = _build_simple_view(rwg, weight)
+    return view
+
+
+def _build_simple_view(rwg: RustworkxGraph, weight) -> SimpleView:
+    rx_graph = rwg.rx_graph
+    edge_map = rx_graph.edge_index_map()
+    indices = sorted(edge_map)  # ascending index == NetworkX key order for converted graphs
+    weights = None
+    if weight is not None:
+        weight_fn = edge_weight_fn(weight)
+        weights = {index: weight_fn(edge_map[index][2]) for index in indices}
+    graph = rx.PyDiGraph(multigraph=False) if rwg.is_directed() else rx.PyGraph(multigraph=False)
+    graph.add_nodes_from([rx_graph.get_node_data(i) for i in rx_graph.node_indices()])
+    # On a multigraph=False container add_edges_from updates a duplicate pair in
+    # place and hands back the existing index, so one Rust call both collapses
+    # the bundles and yields the original -> collapsed map.
+    collapsed = graph.add_edges_from(
+        [(edge_map[index][0], edge_map[index][1], index) for index in indices]
+    )
+    bundles: dict[int, list[int]] = {}
+    for index, c in zip(indices, collapsed):
+        bundles.setdefault(c, []).append(index)
+    for c, members in bundles.items():
+        if len(members) > 1:
+            # add_edges_from left the newest member as payload; NetworkX wants
+            # the first key, or the first of the lightest when weighted.
+            representative = (
+                members[0] if weights is None else min(members, key=weights.__getitem__)
+            )
+            graph.update_edge_by_index(c, representative)
+    orig_to_simple = {index: c for c, members in bundles.items() for index in members}
+    return SimpleView(graph, bundles, orig_to_simple, weights)
+
+
+def keyed_edge(rwg: RustworkxGraph, index: int, *, data=False, edge_map=None):
+    """NetworkX's ``(u, v, key)`` or ``(u, v, key, attrs)`` for rustworkx edge ``index``."""
+    if edge_map is None:
+        u, v = rwg.rx_graph.get_edge_endpoints_by_index(index)
+        payload = rwg.rx_graph.get_edge_data_by_index(index) if data else None
+    else:
+        u, v, payload = edge_map[index]
+    index_to_node = rwg.index_to_node
+    edge = (index_to_node[u], index_to_node[v], rwg.edge_keys[index])
+    if not data:
+        return edge
+    return (*edge, payload if isinstance(payload, dict) else {})
+
+
 def as_directed_rx(rwg: RustworkxGraph):
     """Return a PyDiGraph, treating undirected edges as two directed edges."""
     src = rwg.rx_graph
     if isinstance(src, rx.PyDiGraph):
         return src
-    directed = rx.PyDiGraph(multigraph=False)
+    # The wrapper, not ``src.multigraph``, decides: kernel-built simple graphs
+    # report multigraph=True, while a converted multigraph must keep its
+    # parallel edges so weight-summing kernels (pagerank, hits) see them all.
+    directed = rx.PyDiGraph(multigraph=rwg.is_multigraph())
     directed.add_nodes_from(src.get_node_data(i) for i in src.node_indices())
     for u, v, data in src.weighted_edge_list():
         directed.add_edge(u, v, data)
@@ -190,9 +300,6 @@ def remap_nodes(rwg: RustworkxGraph, indices) -> list:
 
 def can_run_undirected(G, *args, **kwargs):
     """can_run guard for kernels NetworkX only defines on undirected graphs."""
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if G.is_directed():
         return "not implemented for directed type"
     return True
@@ -200,9 +307,6 @@ def can_run_undirected(G, *args, **kwargs):
 
 def can_run_directed(G, *args, **kwargs):
     """can_run guard for kernels NetworkX only defines on directed graphs."""
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if not G.is_directed():
         return "not implemented for undirected type"
     return True

@@ -55,3 +55,4 @@ def pagerank(
 
 
 pagerank.can_run = default_can_run
+pagerank.multigraph = True

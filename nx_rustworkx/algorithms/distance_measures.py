@@ -13,7 +13,6 @@ from nx_rustworkx.algorithms._utils import (
     default_should_run,
     edge_weight_fn,
     reject_callable_weight,
-    reject_multigraph,
 )
 from nx_rustworkx.algorithms.shortest_paths import _lengths_from_source
 
@@ -72,9 +71,6 @@ def _requested_nodes(rwg, v) -> list:
 
 def _can_run_eccentricity(G, v=None, sp=None, weight=None):
     _ = v
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if sp is not None:
         return "a precomputed sp falls back to NetworkX"
     return reject_callable_weight(weight) or True
@@ -117,13 +113,11 @@ def eccentricity(G, v=None, sp=None, weight=None):
 
 eccentricity.can_run = _can_run_eccentricity
 eccentricity.should_run = _should_run_eccentricity
+eccentricity.multigraph = True
 
 
 def _can_run_extremes(G, e=None, usebounds=False, weight=None):
     _ = usebounds
-    reason = reject_multigraph(G)
-    if reason:
-        return reason
     if e is not None:
         return "a precomputed eccentricity dict falls back to NetworkX"
     return reject_callable_weight(weight) or True
@@ -142,6 +136,7 @@ def diameter(G, e=None, usebounds=False, weight=None):
 
 diameter.can_run = _can_run_extremes
 diameter.should_run = _should_run_extremes
+diameter.multigraph = True
 
 
 def radius(G, e=None, usebounds=False, weight=None):
@@ -152,6 +147,7 @@ def radius(G, e=None, usebounds=False, weight=None):
 
 radius.can_run = _can_run_extremes
 radius.should_run = _should_run_extremes
+radius.multigraph = True
 
 
 def center(G, e=None, usebounds=False, weight=None):
@@ -164,6 +160,7 @@ def center(G, e=None, usebounds=False, weight=None):
 
 center.can_run = _can_run_extremes
 center.should_run = _should_run_extremes
+center.multigraph = True
 
 
 def periphery(G, e=None, usebounds=False, weight=None):
@@ -176,3 +173,4 @@ def periphery(G, e=None, usebounds=False, weight=None):
 
 periphery.can_run = _can_run_extremes
 periphery.should_run = _should_run_extremes
+periphery.multigraph = True
