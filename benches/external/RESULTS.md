@@ -1,6 +1,6 @@
 # External benchmark results
 
-Generated 2026-08-23 by the runners in this directory, at nx-rustworkx `c7172fd`.
+Generated 2026-08-23 by the runners in this directory, at nx-rustworkx `73888a7`.
 
 Machine: Linux-6.18.44-fc-v21-x86_64-with-glibc2.39, 4 CPUs, Python 3.12.3, networkx 3.6.1, rustworkx 0.18.1, nx-rustworkx 0.2.0.
 
@@ -71,50 +71,50 @@ NetworkX `7530809bfa1e` (tag networkx-3.6.1), **no benchmark-code changes**: the
 
 | benchmark | graph | NetworkX | rustworkx | speedup | auto-dispatch |
 |---|---|---|---|---|---|
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.005) | 7.52e-05 s | 8.826e-05 s | **0.9x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=59 < 400) |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.01) | 7.231e-05 s | 9.049e-05 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=104 < 400) |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.05) | 0.0001654 s | 0.0001944 s | **0.9x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=477 < 400) |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 0.000291 s | 0.0003606 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=947 < 400) |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 0.00114 s | 0.001111 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4952 < 400) |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.0005) | 0.0006287 s | 0.0006323 s | **1.0x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.001) | 0.0008052 s | 0.0004484 s | **1.8x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.005) | 0.002189 s | 0.000302 s | **7.3x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.01) | 0.003395 s | 0.0003087 s | **11.0x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.05) | 0.01183 s | 0.001492 s | **7.9x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (10000, 0.00005) | 0.01065 s | 0.005001 s | **2.1x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (10000, 0.0001) | 0.01278 s | 0.005699 s | **2.2x** | yes |
-| tarjan_scc (benchmark_algorithms) | Erdos Renyi (10000, 0.0005) | 0.03169 s | 0.004571 s | **6.9x** | yes |
-| tarjan_scc (benchmark_algorithms) | Empty (100) | 6.025e-05 s | 7.241e-05 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=0 < 400) |
-| tarjan_scc (benchmark_algorithms) | Empty (1000) | 0.0005381 s | 0.0007143 s | **0.8x** | no — graph too small for rustworkx conversion (n=1000 < 200 or m=0 < 400) |
-| tarjan_scc (benchmark_algorithms) | Empty (10000) | 0.006836 s | 0.009463 s | **0.7x** | no — graph too small for rustworkx conversion (n=10000 < 200 or m=0 < 400) |
-| tarjan_scc (benchmark_algorithms) | Complete (100) | 0.002128 s | 0.002125 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=9900 < 400) |
-| tarjan_scc (benchmark_algorithms) | Complete (1000) | 0.2131 s | 0.01953 s | **10.9x** | yes |
-| betweenness_centrality (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 0.01535 s | 0.01648 s | **0.9x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=478 < 400) |
-| betweenness_centrality (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 0.04473 s | 0.04367 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2454 < 400) |
-| betweenness_centrality (benchmark_algorithms) | Erdos Renyi (100, 0.9) | 0.05471 s | 0.05431 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4455 < 400) |
-| connected_components (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 3.687e-05 s | 4.603e-05 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=478 < 400) |
-| connected_components (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 1.716e-05 s | 3.296e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2454 < 400) |
-| connected_components (benchmark_algorithms) | Erdos Renyi (100, 0.9) | 1.485e-05 s | 3.277e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4455 < 400) |
-| pagerank (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 0.001201 s | 0.0008751 s | **1.4x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=478 < 400) |
-| pagerank (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 0.002199 s | 0.002144 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2454 < 400) |
-| pagerank (benchmark_algorithms) | Erdos Renyi (100, 0.9) | 0.003148 s | 0.003122 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4455 < 400) |
-| shortest_path (benchmark_algorithms) | dijkstra_relaxation_worst_case(10) | 4.334e-05 s | 6.22e-05 s | **0.7x** | no — graph too small for rustworkx conversion (n=10 < 200 or m=45 < 400) |
-| shortest_path (benchmark_algorithms) | dijkstra_relaxation_worst_case(100) | 0.004138 s | 0.004174 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4950 < 400) |
-| shortest_path (benchmark_algorithms) | dijkstra_relaxation_worst_case(1000) | 1.257 s | 3.008 s | **0.4x** | yes |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 100) | 8.254e-05 s | 0.0001184 s | **0.7x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=99 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 1000) | 0.0007672 s | 0.002034 s | **0.4x** | yes |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 10000) | 0.00789 s | 0.1228 s | **0.1x** | yes |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 20000) | 0.01554 s | 0.533 s | **0.0x** | yes |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 10, 0.1, seed=42) | 1.644e-05 s | 3.33e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=10 < 200 or m=6 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 10, 0.5, seed=42) | 2.285e-05 s | 4.006e-05 s | **0.6x** | no — graph too small for rustworkx conversion (n=10 < 200 or m=20 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 10, 0.9, seed=42) | 2.263e-05 s | 4.115e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=10 < 200 or m=38 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 100, 0.1, seed=42) | 0.0001511 s | 0.0001709 s | **0.9x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=552 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 100, 0.5, seed=42) | 0.0004598 s | 0.0005468 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2421 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 100, 0.9, seed=42) | 0.0004374 s | 0.0005353 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4426 < 400) |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 1000, 0.1, seed=42) | 0.006537 s | 0.05814 s | **0.1x** | yes |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 1000, 0.5, seed=42) | 0.03642 s | 0.7256 s | **0.1x** | yes |
-| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 1000, 0.9, seed=42) | 0.03018 s | 1.917 s | **0.0x** | yes |
-| single_source_all_shortest_paths (benchmark_many_components) | — | 6.695e-05 s | 0.0009542 s | **0.1x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.005) | 6.547e-05 s | 9.138e-05 s | **0.7x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=59 < 400) |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.01) | 6.911e-05 s | 9.118e-05 s | **0.8x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=104 < 400) |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.05) | 0.0001701 s | 0.0001866 s | **0.9x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=477 < 400) |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 0.0002929 s | 0.0003143 s | **0.9x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=947 < 400) |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 0.001099 s | 0.001129 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4952 < 400) |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.0005) | 0.000695 s | 0.0004306 s | **1.6x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.001) | 0.0008355 s | 0.000486 s | **1.7x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.005) | 0.002052 s | 0.0002576 s | **8.0x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.01) | 0.003129 s | 0.0003014 s | **10.4x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (1000, 0.05) | 0.01175 s | 0.00157 s | **7.5x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (10000, 0.00005) | 0.009891 s | 0.005206 s | **1.9x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (10000, 0.0001) | 0.01219 s | 0.005481 s | **2.2x** | yes |
+| tarjan_scc (benchmark_algorithms) | Erdos Renyi (10000, 0.0005) | 0.03013 s | 0.004544 s | **6.6x** | yes |
+| tarjan_scc (benchmark_algorithms) | Empty (100) | 5.342e-05 s | 7.511e-05 s | **0.7x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=0 < 400) |
+| tarjan_scc (benchmark_algorithms) | Empty (1000) | 0.0005042 s | 0.0007106 s | **0.7x** | no — graph too small for rustworkx conversion (n=1000 < 200 or m=0 < 400) |
+| tarjan_scc (benchmark_algorithms) | Empty (10000) | 0.006929 s | 0.008926 s | **0.8x** | no — graph too small for rustworkx conversion (n=10000 < 200 or m=0 < 400) |
+| tarjan_scc (benchmark_algorithms) | Complete (100) | 0.00208 s | 0.002157 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=9900 < 400) |
+| tarjan_scc (benchmark_algorithms) | Complete (1000) | 0.2097 s | 0.01947 s | **10.8x** | yes |
+| betweenness_centrality (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 0.01858 s | 0.01576 s | **1.2x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=478 < 400) |
+| betweenness_centrality (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 0.04511 s | 0.04498 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2454 < 400) |
+| betweenness_centrality (benchmark_algorithms) | Erdos Renyi (100, 0.9) | 0.05622 s | 0.05491 s | **1.0x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4455 < 400) |
+| connected_components (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 2.055e-05 s | 3.868e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=478 < 400) |
+| connected_components (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 1.935e-05 s | 3.847e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2454 < 400) |
+| connected_components (benchmark_algorithms) | Erdos Renyi (100, 0.9) | 1.478e-05 s | 3.005e-05 s | **0.5x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4455 < 400) |
+| pagerank (benchmark_algorithms) | Erdos Renyi (100, 0.1) | 0.001334 s | 0.001065 s | **1.3x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=478 < 400) |
+| pagerank (benchmark_algorithms) | Erdos Renyi (100, 0.5) | 0.002283 s | 0.002159 s | **1.1x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=2454 < 400) |
+| pagerank (benchmark_algorithms) | Erdos Renyi (100, 0.9) | 0.00345 s | 0.003269 s | **1.1x** | no — graph too small for rustworkx conversion (n=100 < 200 or m=4455 < 400) |
+| shortest_path (benchmark_algorithms) | dijkstra_relaxation_worst_case(10) | 4.342e-05 s | 5.444e-05 s | **0.8x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | dijkstra_relaxation_worst_case(100) | 0.004029 s | 0.00423 s | **1.0x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | dijkstra_relaxation_worst_case(1000) | 1.192 s | 1.335 s | **0.9x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 100) | 8.817e-05 s | 0.0001014 s | **0.9x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 1000) | 0.0007854 s | 0.000825 s | **1.0x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 10000) | 0.007757 s | 0.007789 s | **1.0x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, path_graph, 20000) | 0.01528 s | 0.01577 s | **1.0x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 10, 0.1, seed=42) | 1.775e-05 s | 2.608e-05 s | **0.7x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 10, 0.5, seed=42) | 2.576e-05 s | 3.594e-05 s | **0.7x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 10, 0.9, seed=42) | 2.415e-05 s | 3.675e-05 s | **0.7x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 100, 0.1, seed=42) | 0.0001552 s | 0.0001829 s | **0.8x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 100, 0.5, seed=42) | 0.0004791 s | 0.0005234 s | **0.9x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 100, 0.9, seed=42) | 0.0004934 s | 0.0005345 s | **0.9x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 1000, 0.1, seed=42) | 0.005813 s | 0.00631 s | **0.9x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 1000, 0.5, seed=42) | 0.03602 s | 0.03055 s | **1.2x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| shortest_path (benchmark_algorithms) | weighted_graph(42, gnp_random_graph, 1000, 0.9, seed=42) | 0.02897 s | 0.02825 s | **1.0x** | no — NetworkX's bidirectional Dijkstra is faster for a weighted single pair |
+| single_source_all_shortest_paths (benchmark_many_components) | — | 5.806e-05 s | 0.0009625 s | **0.1x** | yes |
 
 ## Target 3 — OSMnx-style city routing demo (forced dispatch)
 
@@ -134,7 +134,8 @@ Routing detail: first backend call (includes graph conversion) 124.0 ms; steady 
 - Auto-dispatch declines graphs with n<200 or m<400 (`nx.config.backends.rustworkx.min_nodes/min_edges`) and 22 functions are never auto-selected; an explicit `backend="rustworkx"` bypasses only the size floor. MultiGraph/MultiDiGraph and weighted betweenness always fall back to NetworkX.
 - T1 cells time a single cold call (conversion included); T2 cells are asv medians where NetworkX's conversion cache (default on since 3.4) amortizes conversion; T3 reports both cold and steady-state routing.
 - **Cold-call economics**: T1's sub-1x rows are all near-linear functions (component counts, isolates, unweighted BFS all-pairs on dense low-diameter graphs) where a single cold call cannot amortize the O(m) conversion. Superlinear kernels (betweenness, weighted all-pairs) win 5-50x even cold; repeat-call workloads amortize conversion through the cache either way.
-- **Known gap found by T2**: weighted single-pair `shortest_path` auto-dispatches but can lose badly (0.02-0.4x on path-shaped and dense graphs). NetworkX answers a weighted pair with bidirectional Dijkstra, while the backend runs a full single-source kernel whose rustworkx PathMapping materializes paths for every visited node and pays a per-edge Python weight callback. On road-network shapes it still wins modestly (T3: 1.5x), so the fix is should_run tuning or a lengths+predecessor kernel, not removal.
+- **Gap found by T2, now fixed**: weighted single-pair `shortest_path` used to auto-dispatch and lose badly (0.02-0.4x on path-shaped and dense graphs) — NetworkX answers a weighted pair with bidirectional Dijkstra, while the backend's single-source paths kernel materializes a path for every visited node. `should_run` now declines single pairs (`benches/bench_single_pair.py` holds the measurements); the goal-stopped `*_length` variants win 1.2-9x everywhere and keep dispatching, and forced `backend=` still runs the paths kernels, which road-network shapes reward (T3: 1.5x).
+- `single_source_all_shortest_paths` keeps dispatching deliberately: it wins 6.9x/1.3x on connected path/dense shapes; the many-components row flags a sub-millisecond loss because only the source's 5-node component is reachable while conversion covers the whole graph.
 - Same machine, same process pattern for both arms in every target; still: single-machine numbers, expect variance.
 
 ## Sanity flags
@@ -163,11 +164,4 @@ Routing detail: first backend call (includes graph conversion) 124.0 ms; steady 
 - T1 all_pairs_shortest_path_length (shortest_paths) [200, 0.2]: rustworkx slower (0.55x)
 - T1 all_pairs_shortest_path_length (shortest_paths) [400, 0.6]: rustworkx slower (0.17x)
 - T1 all_pairs_shortest_path_length (shortest_paths) [400, 0.2]: rustworkx slower (0.57x)
-- T2 shortest_path (benchmark_algorithms) [dijkstra_relaxation_worst_case(1000)]: backend dispatched and LOST (0.42x) — should_run tuning candidate
-- T2 shortest_path (benchmark_algorithms) [weighted_graph(42, path_graph, 1000)]: backend dispatched and LOST (0.38x) — should_run tuning candidate
-- T2 shortest_path (benchmark_algorithms) [weighted_graph(42, path_graph, 10000)]: backend dispatched and LOST (0.06x) — should_run tuning candidate
-- T2 shortest_path (benchmark_algorithms) [weighted_graph(42, path_graph, 20000)]: backend dispatched and LOST (0.03x) — should_run tuning candidate
-- T2 shortest_path (benchmark_algorithms) [weighted_graph(42, gnp_random_graph, 1000, 0.1, seed=42)]: backend dispatched and LOST (0.11x) — should_run tuning candidate
-- T2 shortest_path (benchmark_algorithms) [weighted_graph(42, gnp_random_graph, 1000, 0.5, seed=42)]: backend dispatched and LOST (0.05x) — should_run tuning candidate
-- T2 shortest_path (benchmark_algorithms) [weighted_graph(42, gnp_random_graph, 1000, 0.9, seed=42)]: backend dispatched and LOST (0.02x) — should_run tuning candidate
-- T2 single_source_all_shortest_paths (benchmark_many_components) []: backend dispatched and LOST (0.07x) — should_run tuning candidate
+- T2 single_source_all_shortest_paths (benchmark_many_components) []: backend dispatched and LOST (0.06x) — should_run tuning candidate

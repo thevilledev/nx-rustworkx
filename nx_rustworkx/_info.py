@@ -74,7 +74,9 @@ _FUNCTIONS = {
     "all_pairs_shortest_path_length": [_NO_CUTOFF],
     "all_shortest_paths": ["Only the ``dijkstra`` method; ``bellman-ford`` falls back."],
     "single_source_all_shortest_paths": [
-        "Only the ``dijkstra`` method; ``bellman-ford`` falls back."
+        "Only the ``dijkstra`` method; ``bellman-ford`` falls back.",
+        "Conversion covers the whole graph, so NetworkX wins when only a "
+        "small component is reachable from the source.",
     ],
     "dijkstra_path": [],
     "dijkstra_path_length": [],
