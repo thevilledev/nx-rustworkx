@@ -58,6 +58,10 @@ test = [
 ]
 bench = [
     "pytest>=7.2",
+    # benches/external drives third-party asv suites against this backend;
+    # networkx's own suite imports pandas at collection time.
+    "asv>=0.6.4",
+    "pandas>=2.0",
 ]
 
 [dependency-groups]
