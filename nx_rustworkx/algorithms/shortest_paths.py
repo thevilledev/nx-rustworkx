@@ -201,14 +201,15 @@ def _paths_toward_target(rwg, target, weight, method):
     return out
 
 
-def _lengths_toward_target(rwg, target, weight, method):
+def _lengths_toward_target(rwg, target, weight, method, cast=float):
     target_idx = require_node(rwg, target, kind="Target")
     rx_graph = rwg.rx_graph
     if rwg.is_directed():
         rx_graph = reversed_digraph(rx_graph)
     raw = _single_source_lengths(rx_graph, target_idx, weight, method)
-    out = remap_length_dict(rwg, raw)
-    out[target] = 0.0
+    index_to_node = rwg.index_to_node
+    out = {index_to_node[source]: cast(length) for source, length in raw.items()}
+    out[target] = cast(0)
     return out
 
 
@@ -286,6 +287,8 @@ def shortest_path_length(G, source=None, target=None, weight=None, method="dijks
     """Shortest path lengths via rustworkx Dijkstra or Bellman-Ford."""
     method = "dijkstra" if weight is None else _validate_method(method)
     rwg = as_rw_graph(G)
+    # NetworkX reports unweighted lengths as int hop counts.
+    cast = int if weight is None else float
 
     if source is not None and target is not None:
         if source == target:
@@ -296,28 +299,15 @@ def shortest_path_length(G, source=None, target=None, weight=None, method="dijks
         raw = _single_source_lengths(rwg.rx_graph, src, weight, method, goal_idx=tgt)
         if tgt not in raw:
             raise nx.NetworkXNoPath(f"No path between {source} and {target}.")
-        return float(raw[tgt])
+        return cast(raw[tgt])
 
     if source is not None:
-        src = require_node(rwg, source, kind="Source")
-        raw = _single_source_lengths(rwg.rx_graph, src, weight, method)
-        out = remap_length_dict(rwg, raw)
-        out[source] = 0.0
-        return out
+        return _lengths_from_source(rwg, source, weight, method, cast=cast)
 
     if target is not None:
-        return _lengths_toward_target(rwg, target, weight, method)
+        return _lengths_toward_target(rwg, target, weight, method, cast=cast)
 
-    raw = _all_pairs_lengths(rwg.rx_graph, weight, method)
-
-    def _iter():
-        for src_idx, targets in raw.items():
-            src = rwg.index_to_node[src_idx]
-            mapped = remap_length_dict(rwg, targets)
-            mapped[src] = 0.0
-            yield src, mapped
-
-    return _iter()
+    return _all_pairs_length_items(rwg, weight, method, cast=cast)
 
 
 shortest_path_length.can_run = _can_run_shortest
@@ -555,8 +545,7 @@ def single_target_shortest_path_length(G, target, cutoff=None):
     whichever shape the installed NetworkX returns.
     """
     _ = cutoff
-    lengths = _lengths_toward_target(as_rw_graph(G), target, None, "dijkstra")
-    lengths = {node: int(length) for node, length in lengths.items()}
+    lengths = _lengths_toward_target(as_rw_graph(G), target, None, "dijkstra", cast=int)
     if single_target_shortest_path_length_returns_dict():
         return lengths
     return iter(lengths.items())
