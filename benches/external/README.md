@@ -38,7 +38,7 @@ row must always be explained by that probe.
   `os.environ` after `import networkx` does nothing. Generators need
   `NETWORKX_BACKEND_PRIORITY_GENERATORS` separately.
 - Auto-dispatch declines graphs with **n < 200 or m < 400**
-  (`nx.config.backends.rustworkx.min_nodes/min_edges`) and 22 functions are
+  (`nx.config.backends.rustworkx.min_nodes/min_edges`) and 24 functions are
   implemented but never auto-selected (`NO_AUTO_DISPATCH` in
   `nx_rustworkx/algorithms/_utils.py`). Explicit `backend="rustworkx"`
   bypasses the size floor, not compatibility.
