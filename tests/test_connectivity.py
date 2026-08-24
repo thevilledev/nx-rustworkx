@@ -211,6 +211,7 @@ def test_bridges_with_root():
         (nx.complete_graph(5), False),
         (nx.grid_2d_graph(4, 4), True),
         (nx.DiGraph([(0, 1), (1, 2), (2, 0)]), True),
+        (nx.complete_graph(5, create_using=nx.DiGraph), False),
     ],
 )
 def test_is_planar_matches(G, expected):
