@@ -133,38 +133,54 @@ class _EdgeDataView:
         self._data = data
         self._default = default
 
-    def _wanted(self):
-        if self._nbunch is None:
-            return None
-        if self._graph.has_node(self._nbunch):
-            return {self._nbunch}
-        return set(self._nbunch)
-
-    def _skip(self, wanted, u, v) -> bool:
-        """nbunch filter: out-edges of the nodes on a digraph, incident edges otherwise."""
-        if wanted is None:
-            return False
-        if u in wanted:
-            return False
-        return self._graph.is_directed() or v not in wanted
+    def _nbunch_nodes(self) -> list:
+        """The nbunch as in-graph nodes, in given order; missing ones are
+        quietly ignored, as NetworkX's nbunch_iter does."""
+        graph = self._graph
+        if graph.has_node(self._nbunch):
+            return [self._nbunch]
+        node_to_index = graph.node_to_index
+        return [n for n in dict.fromkeys(self._nbunch) if n in node_to_index]
 
     def __iter__(self):
+        if self._nbunch is None:
+            yield from self._iter_all()
+        else:
+            yield from self._iter_nbunch()
+
+    def _iter_all(self):
         graph = self._graph
-        wanted = self._wanted()
         index_to_node = graph.index_to_node
         for u_idx, v_idx, payload in graph.rx_graph.weighted_edge_list():
-            u = index_to_node[u_idx]
-            v = index_to_node[v_idx]
-            if self._skip(wanted, u, v):
-                continue
-            if self._data is False:
-                yield u, v
-                continue
-            data = payload if isinstance(payload, dict) else {}
-            if self._data is True:
-                yield u, v, data
-            else:
-                yield u, v, data.get(self._data, self._default)
+            yield self._edge(index_to_node[u_idx], index_to_node[v_idx], payload)
+
+    def _iter_nbunch(self):
+        """NetworkX's nbunch semantics: walk the nbunch nodes in order, each
+        yielding its incident (undirected) or outgoing (directed) edges with
+        itself first; an edge between two nbunch nodes appears once, from the
+        first of them."""
+        graph = self._graph
+        node_to_index = graph.node_to_index
+        index_to_node = graph.index_to_node
+        rx_graph = graph.rx_graph
+        seen: set[int] = set()
+        for node in self._nbunch_nodes():
+            # (queried, neighbor, payload) rows; outgoing only on a PyDiGraph.
+            incident = rx_graph.incident_edge_index_map(node_to_index[node])
+            for edge_idx in sorted(incident):
+                if edge_idx in seen:
+                    continue
+                seen.add(edge_idx)
+                _u, nbr_idx, payload = incident[edge_idx]
+                yield self._edge(node, index_to_node[nbr_idx], payload)
+
+    def _edge(self, u, v, payload):
+        if self._data is False:
+            return (u, v)
+        data = payload if isinstance(payload, dict) else {}
+        if self._data is True:
+            return (u, v, data)
+        return (u, v, data.get(self._data, self._default))
 
     def __len__(self) -> int:
         return sum(1 for _ in self)
@@ -716,25 +732,35 @@ class _MultiEdgeDataView(_EdgeDataView):
         super().__init__(graph, nbunch, data, default)
         self._keys = keys
 
-    def __iter__(self):
+    def _iter_all(self):
         graph = self._graph
-        wanted = self._wanted()
         index_to_node = graph.index_to_node
-        edge_keys = graph.edge_keys
         for idx, (u_idx, v_idx, payload) in graph.rx_graph.edge_index_map().items():
-            u = index_to_node[u_idx]
-            v = index_to_node[v_idx]
-            if self._skip(wanted, u, v):
-                continue
-            edge = (u, v, edge_keys[idx]) if self._keys else (u, v)
-            if self._data is False:
-                yield edge
-                continue
-            data = payload if isinstance(payload, dict) else {}
-            if self._data is True:
-                yield (*edge, data)
-            else:
-                yield (*edge, data.get(self._data, self._default))
+            yield self._keyed(index_to_node[u_idx], index_to_node[v_idx], payload, idx)
+
+    def _iter_nbunch(self):
+        graph = self._graph
+        node_to_index = graph.node_to_index
+        index_to_node = graph.index_to_node
+        rx_graph = graph.rx_graph
+        seen: set[int] = set()
+        for node in self._nbunch_nodes():
+            incident = rx_graph.incident_edge_index_map(node_to_index[node])
+            for edge_idx in sorted(incident):
+                if edge_idx in seen:
+                    continue
+                seen.add(edge_idx)
+                _u, nbr_idx, payload = incident[edge_idx]
+                yield self._keyed(node, index_to_node[nbr_idx], payload, edge_idx)
+
+    def _keyed(self, u, v, payload, idx):
+        edge = (u, v, self._graph.edge_keys[idx]) if self._keys else (u, v)
+        if self._data is False:
+            return edge
+        data = payload if isinstance(payload, dict) else {}
+        if self._data is True:
+            return (*edge, data)
+        return (*edge, data.get(self._data, self._default))
 
 
 class RustworkxMultiGraph(RustworkxGraph):
