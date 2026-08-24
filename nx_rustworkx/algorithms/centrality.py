@@ -264,42 +264,40 @@ def eigenvector_centrality(
 eigenvector_centrality.can_run = _can_run_eigenvector
 
 
-def _trivial_degree_centrality(rwg):
-    """NetworkX reports 1 for every node when the graph has at most one node."""
-    if rwg.number_of_nodes() <= 1:
-        return {node: 1 for node in rwg.index_to_node}
-    return None
+def _scaled_degrees(rwg, degree_of):
+    """NetworkX's centrality formula over rustworkx's per-node degrees.
+
+    The ``rx.*degree_centrality`` kernels miscount self-loops (once on
+    PyGraph, not at all on PyDiGraph), while ``PyGraph.degree`` /
+    ``PyDiGraph.in_degree`` / ``out_degree`` count them twice as NetworkX
+    does. Same arithmetic as NetworkX, so the values are bit-identical.
+    """
+    n = rwg.number_of_nodes()
+    if n <= 1:
+        # NetworkX reports 1 for every node when the graph has at most one node.
+        return {node: 1 for node in rwg.node_to_index}
+    s = 1.0 / (n - 1.0)
+    return {node: degree_of(index) * s for node, index in rwg.node_to_index.items()}
 
 
 def degree_centrality(G):
-    """Degree centrality via rustworkx."""
+    """Degree centrality from rustworkx degrees. Self-loops count twice."""
     rwg = as_rw_graph(G)
-    trivial = _trivial_degree_centrality(rwg)
-    if trivial is not None:
-        return trivial
-    scores = remap_scores(rwg, rx.degree_centrality(rwg.rx_graph))
-    if not rwg.is_directed():
-        # rustworkx counts an undirected self-loop once toward the degree;
-        # NetworkX counts it twice, so add the missing share back.
-        share = 1.0 / (rwg.number_of_nodes() - 1)
-        index_to_node = rwg.index_to_node
-        for u, v in rwg.rx_graph.edge_list():
-            if u == v:
-                scores[index_to_node[u]] += share
-    return scores
+    rx_graph = rwg.rx_graph
+    if rwg.is_directed():
+        # NetworkX reports a directed node's degree as in plus out.
+        return _scaled_degrees(rwg, lambda i: rx_graph.in_degree(i) + rx_graph.out_degree(i))
+    return _scaled_degrees(rwg, rx_graph.degree)
 
 
 degree_centrality.multigraph = True
 
 
 def in_degree_centrality(G):
-    """In-degree centrality via rustworkx. Directed graphs only."""
+    """In-degree centrality from rustworkx degrees. Directed graphs only."""
     rwg = as_rw_graph(G)
     require_directed(rwg)
-    trivial = _trivial_degree_centrality(rwg)
-    if trivial is not None:
-        return trivial
-    return remap_scores(rwg, rx.in_degree_centrality(rwg.rx_graph))
+    return _scaled_degrees(rwg, rwg.rx_graph.in_degree)
 
 
 in_degree_centrality.can_run = can_run_directed
@@ -307,13 +305,10 @@ in_degree_centrality.multigraph = True
 
 
 def out_degree_centrality(G):
-    """Out-degree centrality via rustworkx. Directed graphs only."""
+    """Out-degree centrality from rustworkx degrees. Directed graphs only."""
     rwg = as_rw_graph(G)
     require_directed(rwg)
-    trivial = _trivial_degree_centrality(rwg)
-    if trivial is not None:
-        return trivial
-    return remap_scores(rwg, rx.out_degree_centrality(rwg.rx_graph))
+    return _scaled_degrees(rwg, rwg.rx_graph.out_degree)
 
 
 out_degree_centrality.can_run = can_run_directed

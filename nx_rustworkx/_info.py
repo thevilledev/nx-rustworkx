@@ -15,6 +15,10 @@ _MULTI_KEYED = (
 )
 _NO_CALLABLE_WEIGHT = "Callable ``weight`` arguments fall back to NetworkX."
 _NO_CUTOFF = "``cutoff`` falls back to NetworkX."
+_DEGREE_EXACT = (
+    "Scales rustworkx's per-node degrees with NetworkX's own formula, so "
+    "self-loops count twice and values match NetworkX exactly."
+)
 _TIE_BREAK = (
     "The answer is one of several equally valid ones, and rustworkx may pick a "
     "different one than NetworkX."
@@ -46,12 +50,9 @@ _FUNCTIONS = {
         'NetworkX runs one traversal. ``backend="rustworkx"`` still runs it.'
     ],
     "eigenvector_centrality": ["``nstart`` falls back to NetworkX."],
-    "degree_centrality": [
-        "rustworkx divides by n - 1 where NetworkX multiplies by 1 / (n - 1), "
-        "so values can land one ULP apart."
-    ],
-    "in_degree_centrality": ["Directed graphs only."],
-    "out_degree_centrality": ["Directed graphs only."],
+    "degree_centrality": [_DEGREE_EXACT],
+    "in_degree_centrality": ["Directed graphs only.", _DEGREE_EXACT],
+    "out_degree_centrality": ["Directed graphs only.", _DEGREE_EXACT],
     "katz_centrality": [
         "Always L2-normalized, so ``normalized=False`` falls back.",
         "``nstart`` falls back to NetworkX.",

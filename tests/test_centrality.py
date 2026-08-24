@@ -16,6 +16,18 @@ def _directed():
     return nx.gnp_random_graph(40, 0.15, seed=3, directed=True)
 
 
+def _undirected_with_self_loops():
+    G = _undirected()
+    G.add_edges_from([(0, 0), (5, 5)])
+    return G
+
+
+def _directed_with_self_loops():
+    G = _directed()
+    G.add_edges_from([(0, 0), (7, 7)])
+    return G
+
+
 def _assert_scores_match(got, expected, **tol):
     tol = tol or APPROX
     assert set(got) == set(expected)
@@ -41,6 +53,30 @@ def test_in_out_degree_centrality_matches():
         nx.out_degree_centrality(G, backend="rustworkx"),
         nx.out_degree_centrality.orig_func(G),
     )
+
+
+@pytest.mark.parametrize("graph", [_undirected_with_self_loops(), _directed_with_self_loops()])
+def test_degree_centrality_counts_self_loops_twice(graph):
+    expected = nx.degree_centrality.orig_func(graph)
+    got = nx.degree_centrality(graph, backend="rustworkx")
+    _assert_scores_match(got, expected)
+    assert got == expected  # bit-identical, not merely close
+
+
+def test_degree_centrality_self_loop_reported_case():
+    G = nx.Graph([(0, 1), (1, 1), (1, 2)])
+    assert nx.degree_centrality(G, backend="rustworkx") == {0: 0.5, 1: 2.0, 2: 0.5}
+    D = nx.DiGraph([(0, 1), (1, 1), (1, 2)])
+    assert nx.degree_centrality(D, backend="rustworkx") == {0: 0.5, 1: 2.0, 2: 0.5}
+
+
+def test_in_out_degree_centrality_with_self_loops():
+    G = _directed_with_self_loops()
+    for fn in (nx.in_degree_centrality, nx.out_degree_centrality):
+        expected = fn.orig_func(G)
+        got = fn(G, backend="rustworkx")
+        _assert_scores_match(got, expected)
+        assert got == expected
 
 
 def test_in_degree_centrality_rejects_undirected():
