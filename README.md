@@ -7,6 +7,33 @@ Keep `import networkx as nx`. nx-rustworkx converts an `nx.Graph`, runs the
 rustworkx kernel, and remaps the result to the original node IDs. Unsupported
 calls stay on NetworkX.
 
+## How much faster?
+
+Real NetworkX projects with the backend switched on, application code
+unchanged — measured by the runners in
+[`benches/external/`](benches/external/RESULTS.md) on one 4-CPU machine:
+
+| workload | NetworkX | nx-rustworkx | speedup |
+|---|---:|---:|---:|
+| City street network (OSMnx MultiDiGraph), weighted closeness centrality | 358 s | 2.6 s | **136×** |
+| Same network, betweenness centrality | 115 s | 1.5 s | **78×** |
+| Same network, 200 point-to-point travel-time routes | 8.0 s | 2.3 s | **3.4×** |
+| nx-parallel's benchmark suite, all-pairs Bellman–Ford lengths (n=400) | 18.7 s | 0.44 s | **42×** |
+| NetworkX's own benchmark suite, strongly connected components (n=10,000) | 32 ms | 4 ms | **8×** |
+
+**Good fit:** CPU-heavy whole-graph algorithms on graphs from a few hundred
+nodes up — centralities, all-pairs shortest paths, components, isomorphism —
+and repeat-call pipelines, where the one-time conversion is cached across
+calls. Street networks work as-is: MultiDiGraphs with parallel ways dispatch
+with NetworkX's parallel-edge semantics.
+
+**Not the tool:** tiny graphs (auto-dispatch declines below 200 nodes or 400
+edges on purpose), one-off calls to linear-time functions where conversion
+costs more than NetworkX's answer, algorithms NetworkX already runs on
+C-backed SciPy (`pagerank`), custom weight callables, and code that walks
+`G.adj` itself instead of calling `nx.*` functions — a backend can only
+accelerate the NetworkX API.
+
 ## Install
 
 ```bash
