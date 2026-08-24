@@ -61,6 +61,32 @@
         <li>A rustworkx-backed graph object avoids repeated conversion for supported workloads.</li>
       </ul>
 
+      <div class="table-scroll">
+        <table>
+          <caption>Real projects, application code unchanged</caption>
+          <thead>
+            <tr>
+              <th scope="col">Workload</th>
+              <th scope="col" class="n">NetworkX</th>
+              <th scope="col" class="n">nx-rustworkx</th>
+              <th scope="col" class="n">Speedup</th>
+            </tr>
+          </thead>
+          <tbody>
+            <tr><td>City street network (OSMnx MultiDiGraph), weighted closeness centrality</td><td class="n">358 s</td><td class="n">2.6 s</td><td class="n">136&times;</td></tr>
+            <tr><td>Same network, betweenness centrality</td><td class="n">115 s</td><td class="n">1.5 s</td><td class="n">78&times;</td></tr>
+            <tr><td>Same network, 200 point-to-point travel-time routes</td><td class="n">8.0 s</td><td class="n">2.3 s</td><td class="n">3.4&times;</td></tr>
+          </tbody>
+        </table>
+      </div>
+
+      <p>
+        Best for CPU-heavy whole-graph algorithms on graphs from a few hundred
+        nodes up; deliberately not for tiny graphs or one-off linear-time
+        calls, which stay on NetworkX. Method and full numbers:
+        <a href="benchmarks.html#real-projects">benchmarks</a>.
+      </p>
+
       <div class="notice">
         <p>
           <strong>Beta.</strong> Graphs, digraphs, multigraphs and directed
@@ -71,7 +97,7 @@
       <table>
         <caption>Current state</caption>
         <tbody>
-          <tr><th scope="row">Release</th><td>0.1.0</td></tr>
+          <tr><th scope="row">Release</th><td>0.2.1</td></tr>
           <tr><th scope="row">Python</th><td>3.10 or newer</td></tr>
           <tr><th scope="row">NetworkX</th><td>3.4 or newer</td></tr>
           <tr><th scope="row">Supported algorithms</th><td>111</td></tr>
