@@ -392,3 +392,13 @@ def test_in_and_out_degree_are_directed_only():
     U = nx.empty_graph(0, backend="rustworkx")
     with pytest.raises(AttributeError):
         U.in_degree
+
+
+def test_remove_node_survives_non_string_attr_keys():
+    src = nx.Graph()
+    src.add_edge(0, 1)
+    src.add_edge(1, 2)
+    src[1][2][3] = "x"  # NetworkX allows non-string attribute keys
+    G = RustworkxGraph.from_incoming(src)
+    G.remove_node(0)  # triggers the dense-index rebuild
+    assert G.get_edge_data(1, 2) == {3: "x"}
