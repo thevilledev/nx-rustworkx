@@ -444,11 +444,52 @@ class RustworkxGraph:
         return idx
 
     def add_nodes_from(self, nodes_for_adding, **attr):
+        if attr:
+            for node in nodes_for_adding:
+                if isinstance(node, tuple) and len(node) == 2 and isinstance(node[1], dict):
+                    self.add_node(node[0], **{**attr, **node[1]})
+                else:
+                    self.add_node(node, **attr)
+            return
+        node_to_index = self.node_to_index
+        if isinstance(nodes_for_adding, range):
+            # The empty_graph(n) path: range values are unique, hashable, and
+            # never (node, dict) pairs, so no per-node scan is needed.
+            if node_to_index:
+                self._bind_batch([n for n in nodes_for_adding if n not in node_to_index])
+            else:
+                self._bind_batch(list(nodes_for_adding))
+            return
+        # No shared attrs: collect runs of plain new nodes and add each run in
+        # one Rust call instead of one per node. ``pending`` dedupes inside a
+        # run the way node_to_index dedupes against the graph.
+        batch: list = []
+        pending: set = set()
         for node in nodes_for_adding:
             if isinstance(node, tuple) and len(node) == 2 and isinstance(node[1], dict):
-                self.add_node(node[0], **{**attr, **node[1]})
-            else:
-                self.add_node(node, **attr)
+                self._bind_batch(batch)  # bind the run first, keeping insertion order
+                batch = []
+                pending.clear()
+                self.add_node(node[0], **node[1])
+            elif node not in node_to_index and node not in pending:
+                batch.append(node)
+                pending.add(node)
+        self._bind_batch(batch)
+
+    def _bind_batch(self, batch: list) -> None:
+        """Add already-deduped new plain nodes in one Rust call and bind them."""
+        if not batch:
+            return
+        indices = self.rx_graph.add_nodes_from(batch)
+        index_to_node = self.index_to_node
+        top = max(indices)
+        if top >= len(index_to_node):
+            index_to_node.extend([None] * (top + 1 - len(index_to_node)))
+        node_to_index = self.node_to_index
+        for idx, node in zip(indices, batch):
+            index_to_node[idx] = node
+            node_to_index[node] = idx
+        self.__networkx_cache__.clear()
 
     def add_edge(self, u_of_edge, v_of_edge, **attr):
         self.add_node(u_of_edge)

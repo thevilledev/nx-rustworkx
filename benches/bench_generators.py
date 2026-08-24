@@ -28,6 +28,11 @@ def _calls(n: int):
     """Yield ``(name, args, kwargs)`` sized so one row cannot dominate."""
     side = max(2, int(n**0.5))
     order = max(1, n.bit_length() - 1)
+    # These two build through the wrapper's own bulk-add paths rather than a
+    # rustworkx kernel, so they gate the Python side of construction.
+    yield "empty_graph", (25 * n,), {}
+    edgelist = list(nx.gnp_random_graph(n, min(0.05, 20 / n), seed=1).edges())
+    yield "from_edgelist", (edgelist,), {}
     yield "path_graph", (n,), {}
     yield "cycle_graph", (n,), {}
     yield "star_graph", (n,), {}
