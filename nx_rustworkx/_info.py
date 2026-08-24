@@ -41,7 +41,9 @@ _FUNCTIONS = {
     ],
     "closeness_centrality": [
         "A string ``distance`` runs rustworkx's weighted kernel; callable "
-        "``distance`` falls back to NetworkX."
+        "``distance`` falls back to NetworkX. A single-node ``u`` request "
+        "declines automatic dispatch: the kernel computes every node while "
+        'NetworkX runs one traversal. ``backend="rustworkx"`` still runs it.'
     ],
     "eigenvector_centrality": ["``nstart`` falls back to NetworkX."],
     "degree_centrality": [

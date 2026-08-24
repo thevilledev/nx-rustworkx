@@ -10,6 +10,7 @@ from nx_rustworkx.algorithms._utils import (
     as_rw_graph,
     can_run_directed,
     default_can_run,
+    default_should_run,
     edge_weight_fn,
     keyed_edge,
     reject_callable_weight,
@@ -160,6 +161,15 @@ def _can_run_closeness(G, u=None, distance=None, wf_improved=True, **kwargs):
     return True
 
 
+def _should_run_closeness(G, u=None, distance=None, wf_improved=True, **kwargs):
+    _ = distance, wf_improved, kwargs
+    if u is not None:
+        # The kernel has no single-node entry point, so it would compute every
+        # node's score; NetworkX answers u with one BFS/Dijkstra and wins big.
+        return "NetworkX computes a single node's closeness with one traversal"
+    return default_should_run((G,), {})
+
+
 def _distance_as_strength(distance):
     """Turn an edge-distance read into the connection strength rustworkx's
     Newman closeness kernel expects: ``strength = 1 / distance``."""
@@ -206,6 +216,7 @@ def closeness_centrality(
 
 
 closeness_centrality.can_run = _can_run_closeness
+closeness_centrality.should_run = _should_run_closeness
 closeness_centrality.multigraph = True
 
 
