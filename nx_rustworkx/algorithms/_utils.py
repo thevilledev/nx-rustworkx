@@ -286,6 +286,7 @@ def reversed_digraph(rx_graph):
 
 def require_nodes(rwg: RustworkxGraph, nodes, *, kind: str = "Node") -> list[int]:
     """Map an iterable of NetworkX nodes to rustworkx indices."""
+    nodes = list(nodes)  # a one-shot iterator must survive both passes below
     node_to_index = rwg.node_to_index
     missing = [n for n in nodes if n not in node_to_index]
     if missing:
@@ -354,7 +355,6 @@ NO_AUTO_DISPATCH = frozenset(
         "has_path",
         "in_degree_centrality",
         "is_bipartite",
-        "negative_edge_cycle",
         "out_degree_centrality",
         "single_source_dijkstra",
         "single_source_shortest_path",

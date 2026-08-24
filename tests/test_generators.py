@@ -552,3 +552,27 @@ def test_bipartite_random_graph_declines():
         assert generators.random_graph.can_run(3, 3, 0.5) is not True
     finally:
         dispatchable._is_testing = False
+
+
+def test_duplicate_node_labels_fall_back():
+    from nx_rustworkx.interface import BackendInterface
+
+    cases = [
+        ("path_graph", ([0, 0, 1],)),
+        ("cycle_graph", ([0, 0, 1],)),
+        ("complete_graph", ([0, 0, 1],)),
+        ("star_graph", (["c", "c", "x"],)),
+        ("grid_2d_graph", ([0, 0], [1, 2])),
+        ("gnp_random_graph", ([0, 0, 1], 0.0)),
+        ("random_geometric_graph", ([0, 0, 1], 0.5)),
+    ]
+    for name, args in cases:
+        assert BackendInterface.can_run(name, args, {}) is not True, name
+    # An explicit backend call surfaces the refusal instead of building a
+    # wrapper whose node count disagrees with its identity map.
+    with pytest.raises(NotImplementedError):
+        nx.path_graph([0, 0, 1], backend="rustworkx")
+    # Unique labels keep building natively, order preserved.
+    G = nx.path_graph([3, 1, 2], backend="rustworkx")
+    assert list(G) == [3, 1, 2]
+    assert G.number_of_nodes() == G.rx_graph.num_nodes() == 3

@@ -6,8 +6,6 @@ Keep ``import networkx as nx`` as the primary UX. Enable this backend with
 
 from __future__ import annotations
 
-__version__ = "0.1.0"
-
 __all__ = [
     "BackendInterface",
     "RustworkxGraph",
@@ -18,6 +16,12 @@ __all__ = [
 
 
 def __getattr__(name: str):
+    if name == "__version__":
+        # Resolve from the installed distribution so the two can never drift.
+        from importlib.metadata import version
+
+        value = globals()["__version__"] = version("nx-rustworkx")
+        return value
     if name == "BackendInterface":
         from nx_rustworkx.interface import BackendInterface
 

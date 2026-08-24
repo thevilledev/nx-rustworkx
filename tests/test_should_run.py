@@ -150,3 +150,14 @@ def test_shortest_path_declines_where_networkx_wins():
         is True
     )
     assert BackendInterface.should_run("shortest_path_length", (G,), {}) is True
+
+
+def test_closeness_centrality_declines_single_node_requests():
+    import pytest
+
+    G = nx.gnp_random_graph(400, 0.05, seed=0)
+    assert BackendInterface.should_run("closeness_centrality", (G,), {"u": 0}) is not True
+    assert BackendInterface.should_run("closeness_centrality", (G,), {}) is True
+    # backend="rustworkx" still answers, and with NetworkX's value.
+    got = nx.closeness_centrality(G, u=0, backend="rustworkx")
+    assert got == pytest.approx(nx.closeness_centrality.orig_func(G, u=0))
