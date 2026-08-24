@@ -97,14 +97,11 @@ def test_no_auto_dispatch_functions_decline_automatic_selection():
 
 
 def test_explicit_backend_still_runs_declined_functions():
-    import pytest
-
     G = nx.gnp_random_graph(300, 0.05, seed=0)
     got = nx.degree_centrality(G, backend="rustworkx")
     expected = nx.degree_centrality.orig_func(G)
-    # rustworkx divides by n - 1 where NetworkX multiplies by 1 / (n - 1), so
-    # the two can land one ULP apart.
-    assert got == pytest.approx(expected, rel=1e-12)
+    # The backend applies NetworkX's own formula, so the values are bit-identical.
+    assert got == expected
     assert nx.has_path(G, 0, 5, backend="rustworkx") == nx.has_path.orig_func(G, 0, 5)
 
 
