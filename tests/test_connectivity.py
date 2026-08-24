@@ -211,6 +211,7 @@ def test_bridges_with_root():
         (nx.complete_graph(5), False),
         (nx.grid_2d_graph(4, 4), True),
         (nx.DiGraph([(0, 1), (1, 2), (2, 0)]), True),
+        (nx.complete_graph(5, create_using=nx.DiGraph), False),
     ],
 )
 def test_is_planar_matches(G, expected):
@@ -225,3 +226,14 @@ def test_bridges_match_networkx_order():
     assert list(nx.bridges(G, root=4, backend="rustworkx")) == [(4, 5), (5, 6)]
     H = nx.Graph([(3, 1), (1, 0), (0, 3), (1, 9)])
     assert list(nx.bridges(H, backend="rustworkx")) == list(nx.bridges.orig_func(H))
+
+
+def test_transitivity_directed_falls_back():
+    from nx_rustworkx.interface import BackendInterface
+
+    # NetworkX defines a successor-based directed transitivity the kernel
+    # does not reproduce (0.5 vs 0.6 on this graph), so directed declines.
+    D = nx.DiGraph([(0, 1), (1, 2), (2, 0), (0, 2)])
+    assert BackendInterface.can_run("transitivity", (D,), {}) is not True
+    with pytest.raises(NotImplementedError):
+        nx.transitivity(D, backend="rustworkx")

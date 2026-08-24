@@ -133,38 +133,54 @@ class _EdgeDataView:
         self._data = data
         self._default = default
 
-    def _wanted(self):
-        if self._nbunch is None:
-            return None
-        if self._graph.has_node(self._nbunch):
-            return {self._nbunch}
-        return set(self._nbunch)
-
-    def _skip(self, wanted, u, v) -> bool:
-        """nbunch filter: out-edges of the nodes on a digraph, incident edges otherwise."""
-        if wanted is None:
-            return False
-        if u in wanted:
-            return False
-        return self._graph.is_directed() or v not in wanted
+    def _nbunch_nodes(self) -> list:
+        """The nbunch as in-graph nodes, in given order; missing ones are
+        quietly ignored, as NetworkX's nbunch_iter does."""
+        graph = self._graph
+        if graph.has_node(self._nbunch):
+            return [self._nbunch]
+        node_to_index = graph.node_to_index
+        return [n for n in dict.fromkeys(self._nbunch) if n in node_to_index]
 
     def __iter__(self):
+        if self._nbunch is None:
+            yield from self._iter_all()
+        else:
+            yield from self._iter_nbunch()
+
+    def _iter_all(self):
         graph = self._graph
-        wanted = self._wanted()
         index_to_node = graph.index_to_node
         for u_idx, v_idx, payload in graph.rx_graph.weighted_edge_list():
-            u = index_to_node[u_idx]
-            v = index_to_node[v_idx]
-            if self._skip(wanted, u, v):
-                continue
-            if self._data is False:
-                yield u, v
-                continue
-            data = payload if isinstance(payload, dict) else {}
-            if self._data is True:
-                yield u, v, data
-            else:
-                yield u, v, data.get(self._data, self._default)
+            yield self._edge(index_to_node[u_idx], index_to_node[v_idx], payload)
+
+    def _iter_nbunch(self):
+        """NetworkX's nbunch semantics: walk the nbunch nodes in order, each
+        yielding its incident (undirected) or outgoing (directed) edges with
+        itself first; an edge between two nbunch nodes appears once, from the
+        first of them."""
+        graph = self._graph
+        node_to_index = graph.node_to_index
+        index_to_node = graph.index_to_node
+        rx_graph = graph.rx_graph
+        seen: set[int] = set()
+        for node in self._nbunch_nodes():
+            # (queried, neighbor, payload) rows; outgoing only on a PyDiGraph.
+            incident = rx_graph.incident_edge_index_map(node_to_index[node])
+            for edge_idx in sorted(incident):
+                if edge_idx in seen:
+                    continue
+                seen.add(edge_idx)
+                _u, nbr_idx, payload = incident[edge_idx]
+                yield self._edge(node, index_to_node[nbr_idx], payload)
+
+    def _edge(self, u, v, payload):
+        if self._data is False:
+            return (u, v)
+        data = payload if isinstance(payload, dict) else {}
+        if self._data is True:
+            return (u, v, data)
+        return (u, v, data.get(self._data, self._default))
 
     def __len__(self) -> int:
         return sum(1 for _ in self)
@@ -444,11 +460,52 @@ class RustworkxGraph:
         return idx
 
     def add_nodes_from(self, nodes_for_adding, **attr):
+        if attr:
+            for node in nodes_for_adding:
+                if isinstance(node, tuple) and len(node) == 2 and isinstance(node[1], dict):
+                    self.add_node(node[0], **{**attr, **node[1]})
+                else:
+                    self.add_node(node, **attr)
+            return
+        node_to_index = self.node_to_index
+        if isinstance(nodes_for_adding, range):
+            # The empty_graph(n) path: range values are unique, hashable, and
+            # never (node, dict) pairs, so no per-node scan is needed.
+            if node_to_index:
+                self._bind_batch([n for n in nodes_for_adding if n not in node_to_index])
+            else:
+                self._bind_batch(list(nodes_for_adding))
+            return
+        # No shared attrs: collect runs of plain new nodes and add each run in
+        # one Rust call instead of one per node. ``pending`` dedupes inside a
+        # run the way node_to_index dedupes against the graph.
+        batch: list = []
+        pending: set = set()
         for node in nodes_for_adding:
             if isinstance(node, tuple) and len(node) == 2 and isinstance(node[1], dict):
-                self.add_node(node[0], **{**attr, **node[1]})
-            else:
-                self.add_node(node, **attr)
+                self._bind_batch(batch)  # bind the run first, keeping insertion order
+                batch = []
+                pending.clear()
+                self.add_node(node[0], **node[1])
+            elif node not in node_to_index and node not in pending:
+                batch.append(node)
+                pending.add(node)
+        self._bind_batch(batch)
+
+    def _bind_batch(self, batch: list) -> None:
+        """Add already-deduped new plain nodes in one Rust call and bind them."""
+        if not batch:
+            return
+        indices = self.rx_graph.add_nodes_from(batch)
+        index_to_node = self.index_to_node
+        top = max(indices)
+        if top >= len(index_to_node):
+            index_to_node.extend([None] * (top + 1 - len(index_to_node)))
+        node_to_index = self.node_to_index
+        for idx, node in zip(indices, batch):
+            index_to_node[idx] = node
+            node_to_index[node] = idx
+        self.__networkx_cache__.clear()
 
     def add_edge(self, u_of_edge, v_of_edge, **attr):
         self.add_node(u_of_edge)
@@ -609,13 +666,13 @@ class RustworkxGraph:
         self.graph.update(graph_attrs)
         self.node_attrs.update(node_attrs)
         self.add_nodes_from(nodes)
-        for u, v, data in edges:
-            if isinstance(data, dict) and data:
-                self.add_edge(u, v, **data)
-            elif data is None:
-                self.add_edge(u, v)
-            else:
-                self.add_edge(u, v, weight=data)
+        # Re-add at the rustworkx level: routing dict payloads through
+        # add_edge(**attr) would reject NetworkX's non-string attribute keys,
+        # and a rebuild never holds duplicate pairs to merge anyway.
+        node_to_index = self.node_to_index
+        self.rx_graph.add_edges_from(
+            [(node_to_index[u], node_to_index[v], data) for u, v, data in edges]
+        )
 
     def _neighbor_items(self, node: Any):
         idx = self.node_to_index[node]
@@ -675,25 +732,35 @@ class _MultiEdgeDataView(_EdgeDataView):
         super().__init__(graph, nbunch, data, default)
         self._keys = keys
 
-    def __iter__(self):
+    def _iter_all(self):
         graph = self._graph
-        wanted = self._wanted()
         index_to_node = graph.index_to_node
-        edge_keys = graph.edge_keys
         for idx, (u_idx, v_idx, payload) in graph.rx_graph.edge_index_map().items():
-            u = index_to_node[u_idx]
-            v = index_to_node[v_idx]
-            if self._skip(wanted, u, v):
-                continue
-            edge = (u, v, edge_keys[idx]) if self._keys else (u, v)
-            if self._data is False:
-                yield edge
-                continue
-            data = payload if isinstance(payload, dict) else {}
-            if self._data is True:
-                yield (*edge, data)
-            else:
-                yield (*edge, data.get(self._data, self._default))
+            yield self._keyed(index_to_node[u_idx], index_to_node[v_idx], payload, idx)
+
+    def _iter_nbunch(self):
+        graph = self._graph
+        node_to_index = graph.node_to_index
+        index_to_node = graph.index_to_node
+        rx_graph = graph.rx_graph
+        seen: set[int] = set()
+        for node in self._nbunch_nodes():
+            incident = rx_graph.incident_edge_index_map(node_to_index[node])
+            for edge_idx in sorted(incident):
+                if edge_idx in seen:
+                    continue
+                seen.add(edge_idx)
+                _u, nbr_idx, payload = incident[edge_idx]
+                yield self._keyed(node, index_to_node[nbr_idx], payload, edge_idx)
+
+    def _keyed(self, u, v, payload, idx):
+        edge = (u, v, self._graph.edge_keys[idx]) if self._keys else (u, v)
+        if self._data is False:
+            return edge
+        data = payload if isinstance(payload, dict) else {}
+        if self._data is True:
+            return (*edge, data)
+        return (*edge, data.get(self._data, self._default))
 
 
 class RustworkxMultiGraph(RustworkxGraph):

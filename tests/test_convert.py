@@ -155,3 +155,13 @@ def test_simple_wrapper_has_no_edge_keys():
     assert type(rwg) is RustworkxGraph
     assert rwg.edge_keys is None
     assert not rwg.rx_graph.multigraph
+
+
+def test_convert_back_accepts_non_string_attr_keys():
+    # NetworkX allows non-string attribute keys; keyword expansion does not.
+    g = nx.Graph()
+    g.add_edge(0, 1)
+    g[0][1][1] = "x"
+    g[0][1]["w"] = 2
+    out = rustworkx_graph_to_nx(convert_from_nx(g, preserve_edge_attrs=True))
+    assert out[0][1] == {1: "x", "w": 2}

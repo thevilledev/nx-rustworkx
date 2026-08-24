@@ -217,6 +217,32 @@ def test_views_match_networkx(pair, case):
     assert read(backend_graph) == read(nx_graph)
 
 
+def test_edges_nbunch_orientation_and_order_match_networkx():
+    edges = [(1, 2), (2, 3), (3, 4), (1, 4)]
+    G = rustworkx_graph(edges)
+    H = nx.Graph(edges)
+    assert list(G.edges(2)) == list(H.edges(2))
+    assert list(G.edges([3, 1])) == list(H.edges([3, 1]))
+    assert list(G.edges([3, 99])) == list(H.edges([3, 99]))  # missing quietly ignored
+    assert list(G.edges(2, data=True)) == list(H.edges(2, data=True))
+    assert list(G.edges(2, data="w", default=0)) == list(H.edges(2, data="w", default=0))
+    D = rustworkx_graph(edges, directed=True)
+    DH = nx.DiGraph(edges)
+    assert list(D.edges(2)) == list(DH.edges(2))
+    assert list(D.edges([4, 1])) == list(DH.edges([4, 1]))
+
+
+def test_multigraph_edges_nbunch_matches_networkx():
+    from nx_rustworkx.convert import convert_from_nx
+
+    edges = [(1, 2), (1, 2), (2, 3), (3, 3)]
+    M = nx.MultiGraph(edges)
+    W = convert_from_nx(M, preserve_edge_attrs=True)
+    assert list(W.edges(2, keys=True)) == list(M.edges(2, keys=True))
+    assert list(W.edges(2, keys=True, data=True)) == list(M.edges(2, keys=True, data=True))
+    assert list(W.edges([3, 1])) == list(M.edges([3, 1]))
+
+
 @pytest.mark.parametrize("directed", [False, True])
 def test_add_edge_merges_attributes_like_networkx(directed):
     G = rustworkx_graph(directed=directed)
@@ -273,6 +299,35 @@ def test_add_nodes_from_applies_shared_and_per_node_attrs():
     G.add_nodes_from(["a", ("b", {"color": "blue"})], kind="node")
     assert G.nodes["a"] == {"kind": "node"}
     assert G.nodes["b"] == {"kind": "node", "color": "blue"}
+
+
+def test_add_nodes_from_matches_networkx_order_and_dedup():
+    nodes = [3, 1, 3, ("mixed", {"kind": "pair"}), 2, 1, (5, 6)]
+    G = rustworkx_graph()
+    G.add_nodes_from(nodes)
+    H = nx.Graph()
+    H.add_nodes_from(nodes)
+    assert list(G) == list(H)
+    assert G.nodes["mixed"] == H.nodes["mixed"] == {"kind": "pair"}
+    assert (5, 6) in G.nodes  # a plain 2-tuple is a node, not a (node, dict) pair
+
+
+def test_add_nodes_from_keeps_existing_attributes():
+    G = rustworkx_graph()
+    G.add_node(1, color="red")
+    G.add_nodes_from([1, 2])
+    assert G.nodes[1] == {"color": "red"}
+    assert set(G) == {1, 2}
+
+
+def test_add_nodes_from_batches_bind_the_identity_maps():
+    G = rustworkx_graph()
+    G.add_nodes_from(range(1000))
+    assert G.number_of_nodes() == 1000
+    assert G.node_to_index[999] == 999
+    assert G.index_to_node[0] == 0
+    G.add_edge(0, 999)
+    assert G.has_edge(0, 999)
 
 
 def test_copy_gives_independent_attribute_dicts():
@@ -392,3 +447,13 @@ def test_in_and_out_degree_are_directed_only():
     U = nx.empty_graph(0, backend="rustworkx")
     with pytest.raises(AttributeError):
         U.in_degree
+
+
+def test_remove_node_survives_non_string_attr_keys():
+    src = nx.Graph()
+    src.add_edge(0, 1)
+    src.add_edge(1, 2)
+    src[1][2][3] = "x"  # NetworkX allows non-string attribute keys
+    G = RustworkxGraph.from_incoming(src)
+    G.remove_node(0)  # triggers the dense-index rebuild
+    assert G.get_edge_data(1, 2) == {3: "x"}

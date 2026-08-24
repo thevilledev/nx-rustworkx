@@ -71,7 +71,11 @@ _FUNCTIONS = {
         "Single source-target pairs decline automatic dispatch: NetworkX's "
         'bidirectional search wins there. Pass ``backend="rustworkx"`` to force.'
     ],
-    "shortest_path_length": [],
+    "shortest_path_length": [
+        "Unweighted lengths are int hop counts, as in NetworkX. Weighted "
+        "lengths are floats even when every weight is an int: the kernel "
+        "computes in f64."
+    ],
     "single_source_dijkstra": [_NO_CUTOFF],
     "single_source_dijkstra_path": [_NO_CUTOFF],
     "single_source_dijkstra_path_length": [_NO_CUTOFF],
@@ -223,7 +227,7 @@ _FUNCTIONS = {
     ],
     "isolates": [],
     "number_of_isolates": [],
-    "transitivity": [],
+    "transitivity": ["Undirected graphs only; NetworkX's directed value falls back."],
     # --- matching, coloring, trees ----------------------------------------
     "max_weight_matching": [
         "Undirected graphs only. rustworkx's blossom kernel takes integer edge "
