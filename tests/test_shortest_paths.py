@@ -361,6 +361,22 @@ def test_single_source_all_shortest_paths_weighted_ties():
     assert got == expected
 
 
+def test_unweighted_lengths_are_int_hop_counts():
+    G = nx.path_graph(5)
+    pair = nx.shortest_path_length(G, 0, 3, backend="rustworkx")
+    assert pair == 3 and isinstance(pair, int)
+    src = nx.shortest_path_length(G, source=0, backend="rustworkx")
+    assert src == nx.shortest_path_length.orig_func(G, source=0)
+    assert all(isinstance(v, int) for v in src.values())
+    tgt = nx.shortest_path_length(G, target=0, backend="rustworkx")
+    assert all(isinstance(v, int) for v in tgt.values())
+    allp = dict(nx.shortest_path_length(G, backend="rustworkx"))
+    assert allp == dict(nx.shortest_path_length.orig_func(G))
+    assert all(isinstance(v, int) for row in allp.values() for v in row.values())
+    # Weighted lengths stay floats: the kernel computes in f64.
+    assert nx.shortest_path_length(G, 0, 3, weight="weight", backend="rustworkx") == 3.0
+
+
 def test_unknown_method_raises_even_unweighted():
     # NetworkX validates method before weight decides whether it matters.
     G = nx.path_graph(4)
