@@ -918,7 +918,18 @@ floyd_warshall_predecessor_and_distance.multigraph = True
 
 def floyd_warshall(G, weight="weight"):
     """All-pairs distances via rustworkx Floyd-Warshall."""
-    return floyd_warshall_predecessor_and_distance(G, weight=weight)[1]
+    # Distances only: skip the reversed-graph copy and the successor matrix
+    # floyd_warshall_predecessor_and_distance pays for, and let numpy hand
+    # each row over as Python floats in one call.
+    rwg = as_rw_graph(G)
+    matrix = rx.floyd_warshall_numpy(rwg.rx_graph, weight_fn=edge_weight_fn(weight))
+    nodes = rwg.index_to_node
+    distances = {}
+    for node, row in zip(nodes, matrix.tolist()):
+        entry = defaultdict(_inf)
+        entry.update(zip(nodes, row))
+        distances[node] = entry
+    return distances
 
 
 floyd_warshall.can_run = _can_run_weighted

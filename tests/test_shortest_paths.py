@@ -361,6 +361,15 @@ def test_single_source_all_shortest_paths_weighted_ties():
     assert got == expected
 
 
+def test_floyd_warshall_rows_default_to_inf():
+    G = nx.path_graph(5)
+    got = nx.floyd_warshall(G, backend="rustworkx")
+    expected = nx.floyd_warshall.orig_func(G)
+    assert {u: dict(row) for u, row in got.items()} == {u: dict(row) for u, row in expected.items()}
+    # NetworkX hands back defaultdict rows; unknown keys read as inf.
+    assert got[0]["not-a-node"] == math.inf
+
+
 def test_unweighted_lengths_are_int_hop_counts():
     G = nx.path_graph(5)
     pair = nx.shortest_path_length(G, 0, 3, backend="rustworkx")
