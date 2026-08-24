@@ -297,7 +297,7 @@ class RustworkxGraph:
         if isinstance(data, nx.Graph):
             if data.is_multigraph() and not cls._is_multigraph_class():
                 raise nx.NetworkXError("nx-rustworkx does not collapse a MultiGraph into a Graph")
-            out = cls._adopt(convert_from_nx(data, preserve_all_attrs=True))
+            out = cls._from_fresh(convert_from_nx(data, preserve_all_attrs=True))
             if out.is_directed() != directed:
                 out = out.to_directed() if directed else out.to_undirected()
             out.graph.update(attrs)
@@ -307,9 +307,22 @@ class RustworkxGraph:
             out.add_edges_from(data)
         except Exception:
             tmp = cls._nx_class(directed)(data)
-            out = cls._adopt(convert_from_nx(tmp, preserve_all_attrs=True))
+            out = cls._from_fresh(convert_from_nx(tmp, preserve_all_attrs=True))
             out.graph.update(attrs)
         return out
+
+    @classmethod
+    def _from_fresh(cls, converted: RustworkxGraph) -> RustworkxGraph:
+        """Take ownership of a wrapper nothing else references.
+
+        ``convert_from_nx`` built ``converted`` with its own containers and
+        dicts, so adopting it as-is shares nothing with the caller's graph;
+        only a class mismatch (simple data into a multigraph class) still
+        needs ``_adopt`` to widen, which copies.
+        """
+        if type(converted) is cls:
+            return converted
+        return cls._adopt(converted)
 
     @classmethod
     def _is_multigraph_class(cls) -> bool:
@@ -509,13 +522,19 @@ class RustworkxGraph:
         return (self.index_to_node[i] for i in self.rx_graph.neighbors(idx))
 
     def copy(self) -> RustworkxGraph:
+        rx_graph = self.rx_graph.copy()
+        # rustworkx's copy shares payload objects; NetworkX's copy gives every
+        # edge its own attribute dict.
+        for idx, (_u, _v, payload) in rx_graph.edge_index_map().items():
+            if isinstance(payload, dict):
+                rx_graph.update_edge_by_index(idx, dict(payload))
         copied = type(self)(
-            self.rx_graph.copy(),
+            rx_graph,
             dict(self.node_to_index),
             list(self.index_to_node),
             directed=self._directed,
             graph_attrs=self.graph,
-            node_attrs=self.node_attrs,
+            node_attrs=_copy_node_attrs(self.node_attrs),
         )
         return copied
 
@@ -524,17 +543,18 @@ class RustworkxGraph:
             return self.copy()
         directed = self._new_container(True)
         directed.add_nodes_from(self._dense_payloads())
+        # NetworkX gives each direction its own attribute dict.
         for u, v, data in self.rx_graph.weighted_edge_list():
-            directed.add_edge(u, v, data)
+            directed.add_edge(u, v, _copy_payload(data))
             if u != v:
-                directed.add_edge(v, u, data)
+                directed.add_edge(v, u, _copy_payload(data))
         return type(self)(
             directed,
             dict(self.node_to_index),
             list(self.index_to_node),
             directed=True,
             graph_attrs=self.graph,
-            node_attrs=self.node_attrs,
+            node_attrs=_copy_node_attrs(self.node_attrs),
         )
 
     def to_undirected(self) -> RustworkxGraph:
@@ -542,20 +562,27 @@ class RustworkxGraph:
             return self.copy()
         undirected = self._new_container(False)
         undirected.add_nodes_from(self._dense_payloads())
-        seen = set()
+        slots: dict = {}
+        # NetworkX merges a reciprocal (v, u) into the (u, v) edge; later data
+        # wins key by key, and the surviving edge gets its own dict.
         for u, v, data in self.rx_graph.weighted_edge_list():
-            key = (u, v) if u <= v else (v, u)
-            if key in seen:
+            slot = (u, v) if u <= v else (v, u)
+            existing = slots.get(slot)
+            if existing is None:
+                slots[slot] = undirected.add_edge(u, v, _copy_payload(data))
                 continue
-            seen.add(key)
-            undirected.add_edge(u, v, data)
+            payload = undirected.get_edge_data_by_index(existing)
+            if isinstance(payload, dict) and isinstance(data, dict):
+                payload.update(data)
+            elif data is not None:
+                undirected.update_edge_by_index(existing, _copy_payload(data))
         return type(self)(
             undirected,
             dict(self.node_to_index),
             list(self.index_to_node),
             directed=False,
             graph_attrs=self.graph,
-            node_attrs=self.node_attrs,
+            node_attrs=_copy_node_attrs(self.node_attrs),
         )
 
     def _dense_payloads(self) -> list:
@@ -736,7 +763,7 @@ class RustworkxMultiGraph(RustworkxGraph):
             list(other.index_to_node),
             directed=other.is_directed(),
             graph_attrs=other.graph,
-            node_attrs=other.node_attrs,
+            node_attrs=_copy_node_attrs(other.node_attrs),
         )
 
     def is_multigraph(self) -> bool:
@@ -921,7 +948,7 @@ class RustworkxMultiGraph(RustworkxGraph):
             list(self.index_to_node),
             directed=self._directed,
             graph_attrs=self.graph,
-            node_attrs=self.node_attrs,
+            node_attrs=_copy_node_attrs(self.node_attrs),
             edge_keys=dict(self.edge_keys),
         )
 
@@ -944,7 +971,7 @@ class RustworkxMultiGraph(RustworkxGraph):
             list(self.index_to_node),
             directed=True,
             graph_attrs=self.graph,
-            node_attrs=self.node_attrs,
+            node_attrs=_copy_node_attrs(self.node_attrs),
             edge_keys=edge_keys,
         )
 
@@ -977,7 +1004,7 @@ class RustworkxMultiGraph(RustworkxGraph):
             list(self.index_to_node),
             directed=False,
             graph_attrs=self.graph,
-            node_attrs=self.node_attrs,
+            node_attrs=_copy_node_attrs(self.node_attrs),
             edge_keys=edge_keys,
         )
 
@@ -1015,3 +1042,7 @@ class RustworkxMultiGraph(RustworkxGraph):
 
 def _copy_payload(data):
     return dict(data) if isinstance(data, dict) else data
+
+
+def _copy_node_attrs(node_attrs: dict) -> dict:
+    return {node: dict(data) for node, data in node_attrs.items()}
