@@ -440,17 +440,23 @@ class RustworkxGraph:
     def add_edge(self, u_of_edge, v_of_edge, **attr):
         self.add_node(u_of_edge)
         self.add_node(v_of_edge)
-        payload = dict(attr) if attr else None
         u_idx = self.node_to_index[u_of_edge]
         v_idx = self.node_to_index[v_of_edge]
         rx_graph = self.rx_graph
-        # Kernel-built containers report multigraph=True even though they hold
-        # no parallel edges; NetworkX add_edge semantics replace, never add a
-        # parallel edge, so update in place there.
-        if rx_graph.multigraph and rx_graph.has_edge(u_idx, v_idx):
-            rx_graph.update_edge(u_idx, v_idx, payload)
+        # NetworkX add_edge merges new attrs into an existing edge's dict and
+        # never drops what is already there (a bare re-add is a no-op). The
+        # has_edge check covers both container kinds: kernel-built containers
+        # report multigraph=True, where rustworkx's add_edge would create a
+        # parallel edge, and on multigraph=False it would replace the payload.
+        if rx_graph.has_edge(u_idx, v_idx):
+            if attr:
+                payload = rx_graph.get_edge_data(u_idx, v_idx)
+                if isinstance(payload, dict):
+                    payload.update(attr)  # the stored dict itself, so this sticks
+                else:
+                    rx_graph.update_edge(u_idx, v_idx, dict(attr))
         else:
-            rx_graph.add_edge(u_idx, v_idx, payload)
+            rx_graph.add_edge(u_idx, v_idx, dict(attr) if attr else None)
         self.__networkx_cache__.clear()
 
     def add_edges_from(self, ebunch_to_add, **attr):
