@@ -67,6 +67,29 @@ def _reject_multi(*specs):
     return None
 
 
+_DUPLICATE_LABELS_MSG = "duplicated node labels fall back to NetworkX"
+
+
+def _duplicate_labels(*containers) -> bool:
+    """True when a materialized node container repeats a label.
+
+    The kernels make one node per position while NetworkX's dict merges
+    repeated labels into one node, so the shapes cannot align. Only
+    materialized containers are inspected: ``nodes_or_number`` resolves the
+    argument before dispatch, and consuming an arbitrary iterable here would
+    starve the call itself.
+    """
+    for n in containers:
+        if not isinstance(n, (list, tuple)):
+            continue
+        try:
+            if len(set(n)) != len(n):
+                return True
+        except TypeError:
+            pass  # unhashable labels fail inside the call, as in NetworkX
+    return False
+
+
 def _validate_create_using(*specs) -> None:
     """Raise the TypeError NetworkX raises for non-graph ``create_using``."""
     for spec in specs:
@@ -242,9 +265,12 @@ def _empty_container(directed: bool, num_nodes: int = 0):
 def _wrap(rx_graph, nodes, *, directed: bool):
     """Wrap a kernel-built graph whose indices align with ``nodes``."""
     index_to_node = list(nodes)
+    node_to_index = {node: i for i, node in enumerate(index_to_node)}
+    if len(node_to_index) != len(index_to_node):
+        raise NotImplementedError(_DUPLICATE_LABELS_MSG)
     return RustworkxGraph(
         rx_graph,
-        {node: i for i, node in enumerate(index_to_node)},
+        node_to_index,
         index_to_node,
         directed=directed,
     )
@@ -258,7 +284,9 @@ def _raise_for_multi(create_using) -> None:
 
 
 def _can_run_n_create(n=None, create_using=None, **kwargs):
-    _ = n, kwargs
+    _ = kwargs
+    if _duplicate_labels(n):
+        return _DUPLICATE_LABELS_MSG
     return _reject_multi(create_using) or True
 
 
@@ -335,7 +363,9 @@ def star_graph(n, create_using=None):
 
 
 def _can_run_star(n=None, create_using=None, **kwargs):
-    _ = n, kwargs
+    _ = kwargs
+    if _duplicate_labels(n):
+        return _DUPLICATE_LABELS_MSG
     reason = _reject_multi(create_using)
     if reason:
         return reason
@@ -499,7 +529,9 @@ def grid_2d_graph(m, n, periodic=False, create_using=None):
 
 
 def _can_run_grid_2d(m=None, n=None, periodic=False, create_using=None, **kwargs):
-    _ = m, n, kwargs
+    _ = kwargs
+    if _duplicate_labels(m, n):
+        return _DUPLICATE_LABELS_MSG
     reason = _reject_multi(create_using)
     if reason:
         return reason
@@ -583,7 +615,9 @@ def _can_run_random_common(create_using):
 
 
 def _can_run_gnp(n=None, p=None, seed=None, directed=False, *, create_using=None, **kwargs):
-    _ = n, p, seed, directed, kwargs
+    _ = p, seed, directed, kwargs
+    if _duplicate_labels(n):
+        return _DUPLICATE_LABELS_MSG
     return _can_run_random_common(create_using)
 
 
@@ -787,7 +821,9 @@ stochastic_block_model.should_run = _should_run_always
 def _can_run_geometric(
     n=None, radius=None, dim=2, pos=None, p=2, seed=None, *, pos_name="pos", **kwargs
 ):
-    _ = n, radius, dim, p, seed, pos_name, kwargs
+    _ = radius, dim, p, seed, pos_name, kwargs
+    if _duplicate_labels(n):
+        return _DUPLICATE_LABELS_MSG
     reason = _can_run_random_common(None)
     if reason is not True:
         return reason
