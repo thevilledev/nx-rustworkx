@@ -67,10 +67,26 @@ def number_of_isolates(G):
 number_of_isolates.multigraph = True
 
 
+def _can_run_transitivity(G, **kwargs):
+    _ = kwargs
+    if G.is_directed():
+        # NetworkX computes a successor-based directed transitivity that
+        # rustworkx's definition does not reproduce.
+        return "directed transitivity falls back to NetworkX"
+    return True
+
+
 def transitivity(G):
     """Return the fraction of all possible triangles present in the graph."""
     rwg = as_rw_graph(G)
+    if rwg.is_directed():
+        # NetworkX defines a directed value, so refuse rather than answer
+        # differently; can_run already routes dispatch around this.
+        raise NotImplementedError("nx-rustworkx transitivity is undirected only")
     return float(rx.transitivity(rwg.rx_graph))
+
+
+transitivity.can_run = _can_run_transitivity
 
 
 def color(G):
