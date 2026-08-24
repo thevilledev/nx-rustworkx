@@ -70,6 +70,22 @@ def test_steiner_tree_spans_terminals():
     assert _total_weight(G, got.edges()) <= _total_weight(G, expected.edges()) * 2
 
 
+def test_steiner_tree_accepts_iterator_terminals():
+    G = _weighted(seed=7)
+    got = nx.approximation.steiner_tree(G, iter([0, 5, 11]), backend="rustworkx")
+    assert {0, 5, 11} <= set(got.nodes)
+    assert nx.is_connected(nx.Graph(got))
+
+
+def test_steiner_tree_lone_terminal_matches_networkx():
+    # NetworkX's edge subgraph of a single terminal spans nothing at all.
+    G = nx.path_graph(4)
+    got = nx.approximation.steiner_tree(G, [2], method="kou", backend="rustworkx")
+    expected = nx.approximation.steiner_tree.orig_func(G, [2], method="kou")
+    assert list(got) == list(expected) == []
+    assert got.number_of_edges() == 0
+
+
 @pytest.mark.parametrize("seed", [0, 2, 4])
 def test_max_weight_matching_matches(seed):
     G = _weighted(seed=seed, n=16, p=0.3)
