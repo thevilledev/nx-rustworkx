@@ -41,7 +41,9 @@ _FUNCTIONS = {
     ],
     "closeness_centrality": [
         "A string ``distance`` runs rustworkx's weighted kernel; callable "
-        "``distance`` falls back to NetworkX."
+        "``distance`` falls back to NetworkX. A single-node ``u`` request "
+        "declines automatic dispatch: the kernel computes every node while "
+        'NetworkX runs one traversal. ``backend="rustworkx"`` still runs it.'
     ],
     "eigenvector_centrality": ["``nstart`` falls back to NetworkX."],
     "degree_centrality": [
@@ -262,8 +264,16 @@ _FUNCTIONS = {
     ],
     # --- operators and paths ----------------------------------------------
     "complement": ["Returns a NetworkX graph."],
-    "cartesian_product": ["Returns a NetworkX graph; node and edge attributes are dropped."],
-    "tensor_product": ["Returns a NetworkX graph; node and edge attributes are dropped."],
+    "cartesian_product": [
+        "Returns a NetworkX graph; node attributes are paired key by key as "
+        "NetworkX does. Graphs with edge attributes fall back to NetworkX, "
+        "since the dispatcher does not hand edge attributes to the products."
+    ],
+    "tensor_product": [
+        "Returns a NetworkX graph; node attributes are paired key by key as "
+        "NetworkX does. Graphs with edge attributes fall back to NetworkX, "
+        "since the dispatcher does not hand edge attributes to the products."
+    ],
     "line_graph": [
         "Undirected graphs only; ``create_using`` falls back to NetworkX. Returns a "
         "NetworkX Graph, or a MultiGraph whose nodes are ``(u, v, key)`` for "

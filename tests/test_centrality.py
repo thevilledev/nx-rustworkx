@@ -120,6 +120,18 @@ def test_group_betweenness_many_groups():
         assert a == pytest.approx(b)
 
 
+def test_group_centralities_accept_one_shot_iterators():
+    # A generator group must survive both the membership check and the mapping.
+    G = _undirected()
+    group = [0, 1, 2]
+    assert nx.group_closeness_centrality(G, iter(group), backend="rustworkx") == pytest.approx(
+        nx.group_closeness_centrality.orig_func(G, group)
+    )
+    assert nx.group_degree_centrality(G, iter(group), backend="rustworkx") == pytest.approx(
+        nx.group_degree_centrality.orig_func(G, group)
+    )
+
+
 def test_group_centrality_unknown_node_raises():
     G = _undirected()
     with pytest.raises(nx.NodeNotFound):
