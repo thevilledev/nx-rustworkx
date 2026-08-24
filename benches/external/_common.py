@@ -123,7 +123,7 @@ def machine_info() -> dict:
         "cpu_count": os.cpu_count(),
         "networkx": networkx.__version__,
         "rustworkx": rustworkx.__version__,
-        # nx_rustworkx.__version__ lags the distribution metadata; trust the latter.
+        # nx_rustworkx.__version__ resolves from this same metadata.
         "nx-rustworkx": version("nx-rustworkx"),
     }
 

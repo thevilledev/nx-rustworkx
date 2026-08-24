@@ -88,6 +88,14 @@ def test_info_functions_are_dispatchable_in_networkx():
     assert missing == []
 
 
+def test_version_matches_distribution_metadata():
+    from importlib.metadata import version
+
+    import nx_rustworkx
+
+    assert nx_rustworkx.__version__ == version("nx-rustworkx")
+
+
 def test_compat_probes_match_installed_networkx():
     """The version probes must agree with what NetworkX actually does."""
     import warnings
