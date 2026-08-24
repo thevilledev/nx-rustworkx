@@ -15,14 +15,26 @@ def complement(G):
     rwg = as_rw_graph(G)
     complemented = rx.complement(rwg.rx_graph)
     out = nx.DiGraph() if rwg.is_directed() else nx.Graph()
-    node_attrs = rwg.node_attrs
-    if node_attrs:
-        out.add_nodes_from((node, node_attrs.get(node, {})) for node in rwg.index_to_node)
-    else:
-        out.add_nodes_from(rwg.index_to_node)
+    # NetworkX's complement propagates no graph, node, or edge data.
+    out.add_nodes_from(rwg.index_to_node)
     index_to_node = rwg.index_to_node
     out.add_edges_from((index_to_node[u], index_to_node[v]) for u, v in complemented.edge_list())
     return out
+
+
+def _dict_product(d1: dict, d2: dict) -> dict:
+    """NetworkX's product-attr rule: pair the factors' values key by key."""
+    return {k: (d1.get(k), d2.get(k)) for k in {**d1, **d2}}
+
+
+def _can_run_product(G1, G2, **kwargs):
+    _ = kwargs
+    # The dispatcher preserves node attrs for the products but not edge attrs,
+    # so an edge-attr-bearing factor cannot be reproduced faithfully here.
+    for graph in (G1, G2):
+        if any(data for _u, _v, data in graph.edges(data=True)):
+            return "graphs with edge attributes fall back to NetworkX"
+    return True
 
 
 def _product(G, H, kernel):
@@ -35,7 +47,12 @@ def _product(G, H, kernel):
     index_to_pair = {}
     for (i, j), index in node_map.items():
         index_to_pair[index] = (left.index_to_node[i], right.index_to_node[j])
-    out.add_nodes_from(index_to_pair[i] for i in sorted(index_to_pair))
+    left_attrs = left.node_attrs
+    right_attrs = right.node_attrs
+    out.add_nodes_from(
+        (pair, _dict_product(left_attrs.get(pair[0], {}), right_attrs.get(pair[1], {})))
+        for pair in (index_to_pair[i] for i in sorted(index_to_pair))
+    )
     out.add_edges_from((index_to_pair[u], index_to_pair[v]) for u, v in product.edge_list())
     return out
 
@@ -45,9 +62,15 @@ def cartesian_product(G, H):
     return _product(G, H, rx.cartesian_product)
 
 
+cartesian_product.can_run = _can_run_product
+
+
 def tensor_product(G, H):
     """Return the tensor product of two graphs via rustworkx."""
     return _product(G, H, rx.tensor_product)
+
+
+tensor_product.can_run = _can_run_product
 
 
 def _can_run_line_graph(G, create_using=None, **kwargs):

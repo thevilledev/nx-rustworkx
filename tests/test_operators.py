@@ -130,6 +130,43 @@ def test_complement_matches(G):
     assert got.is_directed() == expected.is_directed()
 
 
+def test_complement_carries_no_attributes():
+    G = nx.empty_graph(0, backend="rustworkx")
+    G.add_node(0, color="red")
+    G.add_edge(0, 1, w=3)
+    H = nx.Graph()
+    H.add_node(0, color="red")
+    H.add_edge(0, 1, w=3)
+    got = nx.complement(G, backend="rustworkx")
+    expected = nx.complement.orig_func(H)
+    assert dict(got.nodes(data=True)) == dict(expected.nodes(data=True))
+
+
+@pytest.mark.parametrize("kernel", ["cartesian_product", "tensor_product"])
+def test_products_pair_node_attrs_like_networkx(kernel):
+    A = nx.Graph()
+    A.add_node(0, na="x")
+    A.add_edge(0, 1)
+    B = nx.Graph()
+    B.add_node("a", nb="y")
+    B.add_edge("a", "b")
+    got = getattr(nx, kernel)(A, B, backend="rustworkx")
+    expected = getattr(nx, kernel).orig_func(A, B)
+    assert dict(got.nodes(data=True)) == dict(expected.nodes(data=True))
+    assert {frozenset(e) for e in got.edges()} == {frozenset(e) for e in expected.edges()}
+
+
+def test_products_decline_edge_attribute_graphs():
+    from nx_rustworkx.interface import BackendInterface
+
+    A = nx.Graph([(0, 1)])
+    B = nx.Graph()
+    B.add_edge("a", "b", w=4)
+    assert BackendInterface.can_run("cartesian_product", (A, B), {}) is not True
+    assert BackendInterface.can_run("tensor_product", (A, B), {}) is not True
+    assert BackendInterface.can_run("cartesian_product", (A, nx.Graph([("a", "b")])), {}) is True
+
+
 @pytest.mark.parametrize("kernel", ["cartesian_product", "tensor_product"])
 def test_products_match(kernel):
     G = nx.path_graph(4)
