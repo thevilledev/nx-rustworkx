@@ -84,20 +84,73 @@ pre code {
   font-size: 1em;
 }
 
-pre.plain {
-  border: 0;
-  padding: 0;
+/* Header diagram: your graph in, rustworkx indices out. */
+
+.diagram {
+  display: block;
+  width: 100%;
+  height: auto;
+  margin: 0.9em auto 0.2em;
+  color: #000;
 }
 
-.banner {
-  font-size: 0.75em;
-  line-height: 1.15;
-  margin: 0.6em 0 0;
+.diagram .edge {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
 }
 
-@media (max-width: 480px) {
-  .banner {
-    font-size: 0.56em;
+.diagram .node {
+  fill: #fff;
+  stroke: currentColor;
+  stroke-width: 1.6;
+}
+
+.diagram .node-rx {
+  fill: #e8e8e8;
+}
+
+.diagram .flow {
+  fill: none;
+  stroke: currentColor;
+  stroke-width: 1.4;
+}
+
+.diagram text {
+  fill: currentColor;
+  text-anchor: middle;
+}
+
+.diagram .lbl {
+  font-family: ui-monospace, "SF Mono", Menlo, Consolas, "Liberation Mono", monospace;
+  font-size: 13px;
+}
+
+.diagram .cap {
+  font-style: italic;
+  font-size: 12.5px;
+}
+
+.diagram .start {
+  text-anchor: start;
+}
+
+.diagram .end {
+  text-anchor: end;
+}
+
+.diagram-tall {
+  display: none;
+}
+
+@media (max-width: 560px) {
+  .diagram-wide {
+    display: none;
+  }
+
+  .diagram-tall {
+    display: block;
+    max-width: 300px;
   }
 }
 
